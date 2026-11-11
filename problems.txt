@@ -1,0 +1,84 @@
+# Math problems for Math Quest.
+# Format: category | question | answer
+# Categories: addition, subtraction, multiplication, division, exponents
+# Lines starting with # are comments. Add your own problems below!
+
+addition | 24 + 38 | 62
+addition | 47 + 13 | 60
+addition | 1 + 30 | 31
+addition | 34 + 50 | 84
+addition | 44 + 38 | 82
+addition | 20 + 22 | 42
+addition | 39 + 45 | 84
+addition | 40 + 44 | 84
+addition | 4 + 33 | 37
+addition | 6 + 47 | 53
+addition | 31 + 22 | 53
+addition | 43 + 22 | 65
+addition | 26 + 27 | 53
+addition | 34 + 43 | 77
+addition | 21 + 45 | 66
+
+subtraction | 41 - 26 | 15
+subtraction | 61 - 60 | 1
+subtraction | 95 - 13 | 82
+subtraction | 25 - 24 | 1
+subtraction | 23 - 3 | 20
+subtraction | 97 - 45 | 52
+subtraction | 39 - 27 | 12
+subtraction | 34 - 11 | 23
+subtraction | 43 - 18 | 25
+subtraction | 44 - 43 | 1
+subtraction | 73 - 26 | 47
+subtraction | 42 - 18 | 24
+subtraction | 41 - 17 | 24
+subtraction | 83 - 28 | 55
+subtraction | 54 - 17 | 37
+
+multiplication | 5 x 4 | 20
+multiplication | 6 x 4 | 24
+multiplication | 10 x 11 | 110
+multiplication | 7 x 10 | 70
+multiplication | 2 x 2 | 4
+multiplication | 11 x 2 | 22
+multiplication | 11 x 2 | 22
+multiplication | 7 x 8 | 56
+multiplication | 2 x 10 | 20
+multiplication | 12 x 10 | 120
+multiplication | 12 x 2 | 24
+multiplication | 9 x 6 | 54
+multiplication | 4 x 2 | 8
+multiplication | 11 x 7 | 77
+multiplication | 6 x 5 | 30
+
+division | 16 / 4 | 4
+division | 55 / 11 | 5
+division | 66 / 11 | 6
+division | 22 / 2 | 11
+division | 45 / 5 | 9
+division | 84 / 12 | 7
+division | 72 / 6 | 12
+division | 99 / 9 | 11
+division | 42 / 7 | 6
+division | 60 / 5 | 12
+division | 42 / 6 | 7
+division | 60 / 12 | 5
+division | 60 / 6 | 10
+division | 108 / 9 | 12
+division | 56 / 7 | 8
+
+exponents | 2 ^ 5 | 32
+exponents | 2 ^ 7 | 128
+exponents | 2 ^ 3 | 8
+exponents | 2 ^ 6 | 64
+exponents | 12 ^ 2 | 144
+exponents | 10 ^ 2 | 100
+exponents | 2 ^ 3 | 8
+exponents | 4 ^ 3 | 64
+exponents | 2 ^ 5 | 32
+exponents | 2 ^ 8 | 256
+exponents | 4 ^ 2 | 16
+exponents | 2 ^ 3 | 8
+exponents | 4 ^ 3 | 64
+exponents | 5 ^ 3 | 125
+exponents | 3 ^ 3 | 27
