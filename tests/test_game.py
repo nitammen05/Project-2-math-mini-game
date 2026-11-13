@@ -105,5 +105,29 @@ class TestTurns(unittest.TestCase):
         self.assertLess(turns, 40)
 
 
+class TestHeroChoice(unittest.TestCase):
+    """Round 2: the player's chosen sprite is stored on the game."""
+
+    def test_R3_default_hero_when_none_chosen(self):
+        from sprites import DEFAULT_HERO
+        self.assertEqual(Game(make_problems(), random.Random(0)).hero, DEFAULT_HERO)
+
+    def test_R3_chosen_hero_is_kept(self):
+        g = Game(make_problems(), random.Random(0), hero="wizard")
+        self.assertEqual(g.hero, "wizard")
+
+    def test_R3_unknown_hero_falls_back_to_default(self):
+        from sprites import DEFAULT_HERO
+        g = Game(make_problems(), random.Random(0), hero="<script>")
+        self.assertEqual(g.hero, DEFAULT_HERO)
+
+    def test_R3_hero_stays_the_same_across_battles(self):
+        g = Game(make_problems(), random.Random(0), hero="ninja")
+        while g.status == "playing":
+            g.answer(right(g))
+        self.assertEqual(g.status, "won")
+        self.assertEqual(g.hero, "ninja")
+
+
 if __name__ == "__main__":
     unittest.main()

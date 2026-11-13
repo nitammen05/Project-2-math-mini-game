@@ -7,6 +7,7 @@ from dataclasses import dataclass
 import random
 
 from problems import check_answer
+from sprites import hero_or_default
 
 
 @dataclass(frozen=True)
@@ -36,8 +37,9 @@ POINTS_PER_HIT = 10
 
 
 class Game:
-    def __init__(self, problems_by_category, rng=None, opponents=OPPONENTS):
+    def __init__(self, problems_by_category, rng=None, opponents=OPPONENTS, hero=None):
         self.rng = rng or random.Random()
+        self.hero = hero_or_default(hero)   # which hero sprite the player chose (R3)
         self.problems = problems_by_category
         # Skip any opponent whose category has no problems in the file.
         self.opponents = [o for o in opponents if self.problems.get(o.category)]
