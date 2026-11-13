@@ -48,16 +48,16 @@ HEROES = {
         <rect x='25' y='50' width='5' height='10' fill='#6d4c41'/>
         <rect x='34' y='50' width='5' height='10' fill='#6d4c41'/>"""),
     "ninja": Sprite("Ninja", """
-        <rect x='22' y='30' width='20' height='22' rx='4' fill='#22223b'/>
-        <circle cx='32' cy='20' r='11' fill='#22223b'/>
+        <rect x='22' y='30' width='20' height='22' rx='4' fill='#4a4e69'/>
+        <circle cx='32' cy='20' r='11' fill='#4a4e69'/>
         <rect x='23' y='17' width='18' height='6' rx='3' fill='#f1c27d'/>
         <circle cx='28' cy='20' r='1.5' fill='#222'/>
         <circle cx='36' cy='20' r='1.5' fill='#222'/>
         <rect x='21' y='12' width='22' height='3' fill='#e63946'/>
         <path d='M43 13 L52 9 L50 15 Z' fill='#e63946'/>
         <path d='M50 30 l3 -6 l3 6 l-3 6 Z' fill='#adb5bd'/>
-        <rect x='24' y='52' width='6' height='8' fill='#22223b'/>
-        <rect x='34' y='52' width='6' height='8' fill='#22223b'/>"""),
+        <rect x='24' y='52' width='6' height='8' fill='#4a4e69'/>
+        <rect x='34' y='52' width='6' height='8' fill='#4a4e69'/>"""),
 }
 
 DEFAULT_HERO = "knight"
