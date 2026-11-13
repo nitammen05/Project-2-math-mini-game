@@ -7,6 +7,7 @@ from urllib.parse import urlencode
 import main
 from game import Game
 from problems import Problem
+from sprites import DEFAULT_HERO, HEROES, MONSTERS
 from web import make_server, render_game, render_title
 
 PROBLEMS = {"addition": [Problem("addition", "1 + 1", 2)],
@@ -40,6 +41,46 @@ class TestRendering(unittest.TestCase):
         while g.status == "playing":
             g.answer(str(g.current_problem.answer))
         self.assertIn("Victory", render_game(g))
+
+
+class TestSpriteRendering(unittest.TestCase):
+    """Round 2: sprites on the page (R2, R3, R4)."""
+
+    def test_R3_title_offers_every_hero(self):
+        html = render_title()
+        for key, hero in HEROES.items():
+            self.assertIn(f"name='hero' value='{key}'", html)
+            self.assertIn(f"aria-label='{hero.name}'", html)
+
+    def test_R3_default_hero_is_preselected_on_title(self):
+        html = render_title()
+        self.assertIn(f"value='{DEFAULT_HERO}' checked", html)
+        self.assertEqual(html.count(" checked"), 1)
+
+    def test_R2_battle_shows_hero_and_opponent_sprites(self):
+        html = render_game(Game(PROBLEMS, hero="archer"))
+        self.assertIn("aria-label='Archer'", html)
+        self.assertIn("aria-label='Slime of Sums'", html)
+        self.assertEqual(html.count("<svg"), 2)
+
+    def test_R4_battle_sprite_changes_with_the_opponent(self):
+        g = Game(PROBLEMS)
+        self.assertIn(MONSTERS["slime"].svg, render_game(g))
+        while g.stage == 0:
+            g.answer(str(g.current_problem.answer))
+        html = render_game(g)   # PROBLEMS skips to the Orc of Times
+        self.assertIn(MONSTERS["orc"].svg, html)
+        self.assertNotIn(MONSTERS["slime"].svg, html)
+
+    def test_R3_end_screens_let_player_choose_again_with_current_hero_selected(self):
+        g = Game(PROBLEMS, hero="ninja")
+        while g.status == "playing":
+            g.answer("wrong")
+        html = render_game(g)
+        self.assertIn("Try again", html)
+        for key in HEROES:
+            self.assertIn(f"name='hero' value='{key}'", html)
+        self.assertIn("value='ninja' checked", html)
 
 
 class TestServer(unittest.TestCase):
@@ -92,6 +133,25 @@ class TestServer(unittest.TestCase):
     def test_answer_without_game_just_redirects(self):
         self.assertEqual(self.request("POST", "/answer", {"answer": "2"})[0].status, 303)
 
+    def test_R3_start_with_chosen_hero_shows_it(self):
+        resp, _ = self.request("POST", "/start", {"hero": "wizard"})
+        cookie = resp.getheader("Set-Cookie").split(";")[0]
+        _, text = self.request("GET", "/", cookie=cookie)
+        self.assertIn("aria-label='Wizard'", text)
+
+    def test_R3_start_with_bad_hero_uses_default(self):
+        resp, _ = self.request("POST", "/start", {"hero": "dragon"})
+        cookie = resp.getheader("Set-Cookie").split(";")[0]
+        _, text = self.request("GET", "/", cookie=cookie)
+        self.assertIn(f"aria-label='{HEROES[DEFAULT_HERO].name}'", text)
+
+    def test_R3_play_again_can_change_hero(self):
+        resp, _ = self.request("POST", "/start", {"hero": "wizard"})
+        cookie = resp.getheader("Set-Cookie").split(";")[0]
+        self.request("POST", "/start", {"hero": "archer"}, cookie=cookie)
+        _, text = self.request("GET", "/", cookie=cookie)
+        self.assertIn("aria-label='Archer'", text)
+        self.assertNotIn("aria-label='Wizard'", text)
 
 class TestMain(unittest.TestCase):
     def test_parse_args_defaults(self):

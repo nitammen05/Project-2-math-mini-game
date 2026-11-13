@@ -2,7 +2,7 @@
 
 Pages:
     GET  /         show the title screen or the current battle
-    POST /start    begin a new game
+    POST /start    begin a new game (form field `hero` picks the player's sprite)
     POST /answer   submit an answer to the current problem
 """
 
@@ -13,6 +13,7 @@ from urllib.parse import parse_qs
 import secrets
 
 from game import Game, PLAYER_MAX_HP
+from sprites import DEFAULT_HERO, HEROES, render_hero, render_monster
 
 STYLE = """
 body { font-family: system-ui, sans-serif; background: #1d1b2f; color: #f2f0ff;
@@ -29,6 +30,15 @@ input[type=text] { font-size: 1.4em; width: 8em; padding: 6px; }
 button { font-size: 1.2em; padding: 8px 18px; border: 0; border-radius: 8px;
          background: #ffd166; color: #1d1b2f; cursor: pointer; }
 form { text-align: center; }
+.arena { display: flex; gap: 12px; }
+.arena > div { flex: 1; text-align: center; }
+.sprite { display: block; margin: 0 auto; }
+.picker { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin: 8px 0 14px; }
+.picker label { background: #2b2945; border: 3px solid transparent; border-radius: 12px;
+                padding: 6px 10px; cursor: pointer; }
+.picker label:has(input:checked) { border-color: #ffd166; }
+.picker input { position: absolute; opacity: 0; }
+.picker input:focus-visible + .sprite { outline: 2px dashed #ffd166; }
 """
 
 
@@ -45,8 +55,15 @@ def hp_bar(label, hp, max_hp, css_class):
             f"<div class='bar'><div class='fill' style='width:{percent}%'></div></div></div>")
 
 
-def start_button(text):
-    return f"<form method='post' action='/start'><button>{text}</button></form>"
+def start_form(text, selected=DEFAULT_HERO):
+    """The 'start a game' form, with a hero picker (R3). `selected` starts ticked."""
+    choices = []
+    for key, hero in HEROES.items():
+        checked = " checked" if key == selected else ""
+        choices.append(f"<label><input type='radio' name='hero' value='{key}'{checked}>"
+                       f"{render_hero(key, size=72)}{escape(hero.name)}</label>")
+    return ("<form method='post' action='/start'><p>Choose your hero:</p>"
+            f"<div class='picker'>{''.join(choices)}</div><button>{text}</button></form>")
 
 
 def render_title():
@@ -55,7 +72,7 @@ def render_title():
                 "Multiplication, Division, and finally Exponents.</p>"
                 "<p>Correct answers hit the monster. Wrong answers let it hit you. "
                 "Three right in a row lands a critical hit!</p></div>"
-                + start_button("Begin your quest"))
+                + start_form("Begin your quest"))
 
 
 def render_game(game):
@@ -63,8 +80,10 @@ def render_game(game):
     parts = [
         f"<p>Battle {game.stage + 1} of {len(game.opponents)} · Score {game.score}"
         f" · Streak {game.streak}</p>",
-        hp_bar(opp.name, game.opponent_hp, opp.max_hp, "foe"),
-        hp_bar("You", game.player_hp, PLAYER_MAX_HP, "hero"),
+        "<div class='arena'>",
+        f"<div>{render_hero(game.hero)}{hp_bar('You', game.player_hp, PLAYER_MAX_HP, 'hero')}</div>",
+        f"<div>{render_monster(opp)}{hp_bar(opp.name, game.opponent_hp, opp.max_hp, 'foe')}</div>",
+        "</div>",
         f"<p class='message'>{escape(game.message)}</p>",
     ]
     if game.status == "playing":
@@ -75,10 +94,10 @@ def render_game(game):
             "<button>Attack!</button></form></div>")
     elif game.status == "won":
         parts.append(f"<div class='card'><h2>Victory! Final score: {game.score}</h2></div>"
-                     + start_button("Play again"))
+                     + start_form("Play again", game.hero))
     else:
         parts.append(f"<div class='card'><h2>Game over. Final score: {game.score}</h2></div>"
-                     + start_button("Try again"))
+                     + start_form("Try again", game.hero))
     return page("".join(parts))
 
 
@@ -119,7 +138,7 @@ def make_handler(problems_by_category):
             form = parse_qs(self.rfile.read(length).decode("utf-8"))
             if self.path == "/start":
                 session_id = self._session_id() or secrets.token_hex(16)
-                games[session_id] = Game(problems_by_category)
+                games[session_id] = Game(problems_by_category, hero=form.get("hero", [None])[0])
                 self._redirect_home(session_id)
             elif self.path == "/answer":
                 game = games.get(self._session_id())
