@@ -8,3 +8,8 @@ The program must create a fun game that both helps the user learn and enjoy lear
 - I want the game to have player and opponent sprites to visually represent them
 - The player must be able to choose their player sprite
 - The opponent sprites should match the name description of the opponent
+
+**Round 3**
+- I want the game to use a classic fighting game screen set-up
+- I want there to be health bars on the top of the screen, short animations indicating attacks and damage taken, and each sprite should be standing on either side of the screen facing eachother.
+- The animations can be simple but it must be obvious who is attacking and who is taking damage.
