@@ -15,3 +15,8 @@ Standing rules for every round (added after Round 2):
 10. Run the whole test suite (`python3 -m unittest discover -s tests -t .`) before and after each change; earlier rounds' tests must keep passing.
 11. Record at least one real decision per round in `docs/decisions/NNNN-title.md` (0001, 0002, ...) as a Y-statement.
 12. Each round's handoff goes in `handoff-round-<N>.md`; the student reviews it and CLAUDE.md before they are committed.
+
+Standing rules added after Round 3:
+
+13. When a new test fails, read why before changing code: the test may be the thing that is wrong. Never change an earlier round's test to make new code pass.
+14. Tests only check the HTML text, so check anything visual (layout, sprites, animations) by looking at it too, for example with a headless Chrome screenshot, and ask the student to try it in the browser.
