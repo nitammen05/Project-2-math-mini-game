@@ -5,10 +5,10 @@ import unittest
 from urllib.parse import urlencode
 
 import main
-from game import Game
+from game import Game, Opponent
 from problems import Problem
 from sprites import DEFAULT_HERO, HEROES, MIRROR, MONSTERS, render_hero, render_monster
-from web import FIGHTER_SIZE, make_server, render_game, render_title
+from web import FIGHTER_SIZE, STYLE, make_server, render_game, render_title
 
 PROBLEMS = {"addition": [Problem("addition", "1 + 1", 2)],
             "multiplication": [Problem("multiplication", "<b>3 x 3</b>", 9)]}
@@ -129,6 +129,89 @@ class TestFightingLayout(unittest.TestCase):
         self.assertIn(MIRROR, html)   # the orc was drawn facing right
 
 
+class TestAttackAnimations(unittest.TestCase):
+    """Round 3: short animations show who attacks and who takes damage (R7)."""
+
+    def test_R7_no_one_attacks_before_the_first_answer(self):
+        html = render_game(Game(PROBLEMS))
+        self.assertIn("class='fighter hero'", html)
+        self.assertIn("class='fighter foe'", html)
+        self.assertNotIn("class='dmg", html)
+        self.assertNotIn("K.O.", html)
+
+    def test_R7_correct_answer_hero_lunges_and_foe_is_hurt(self):
+        g = Game(PROBLEMS)
+        g.answer("2")
+        html = render_game(g)
+        self.assertIn("class='fighter hero attack'", html)
+        self.assertIn("class='fighter foe hurt'", html)
+        self.assertIn("class='dmg at-foe'>-1<", html)
+        self.assertNotIn("class='dmg at-hero", html)
+
+    def test_R7_wrong_answer_foe_lunges_and_hero_is_hurt(self):
+        g = Game(PROBLEMS)
+        g.answer("wrong")
+        html = render_game(g)
+        self.assertIn("class='fighter foe attack'", html)
+        self.assertIn("class='fighter hero hurt'", html)
+        self.assertIn(f"class='dmg at-hero'>-{g.opponent.attack}<", html)
+        self.assertNotIn("class='dmg at-foe", html)
+
+    def test_R7_critical_hit_is_marked(self):
+        wall = [Opponent("Wall of Sums", "addition", max_hp=99, attack=1)]
+        g = Game(PROBLEMS, opponents=wall)
+        for _ in range(3):
+            g.answer("2")
+        self.assertIn("class='dmg at-foe crit'>CRIT -2<", render_game(g))
+
+    def test_R7_defeated_last_opponent_falls_over(self):
+        g = Game(PROBLEMS)
+        while g.status == "playing":
+            g.answer(str(g.current_problem.answer))
+        html = render_game(g)
+        self.assertIn("class='fighter hero attack'", html)
+        self.assertIn("class='fighter foe hurt ko'", html)
+        self.assertIn("K.O.", html)
+
+    def test_R7_defeated_player_falls_over(self):
+        g = Game(PROBLEMS)
+        while g.status == "playing":
+            g.answer("wrong")
+        html = render_game(g)
+        self.assertIn("class='fighter foe attack'", html)
+        self.assertIn("class='fighter hero hurt ko'", html)
+        self.assertIn("K.O.", html)
+
+    def test_R7_new_opponent_slides_in_after_a_knockout(self):
+        g = Game(PROBLEMS)
+        while g.stage == 0:
+            g.answer(str(g.current_problem.answer))
+        html = render_game(g)
+        self.assertIn("class='fighter hero attack'", html)
+        # The hit that finished the slime: its 3rd correct answer in a row, so a crit.
+        self.assertIn("class='dmg at-foe crit'>CRIT -2<", html)
+        self.assertIn("K.O.", html)
+        self.assertIn("class='fighter foe enter'", html)
+        self.assertIn("aria-label='Orc of Times'", html)
+
+    def test_R7_style_defines_every_animation(self):
+        for name in ("lunge-right", "lunge-left", "shake", "flash", "rise",
+                     "fall-left", "fall-right", "slide-in", "pop"):
+            self.assertIn(f"@keyframes {name} ", STYLE, name)
+
+    def test_R7_reduced_motion_keeps_the_flash(self):
+        reduced = STYLE[STYLE.index("prefers-reduced-motion"):]
+        self.assertIn("animation: none", reduced)
+        self.assertIn("flash", reduced)
+
+    def test_R7_animations_are_short(self):
+        # Every duration in an `animation:` line is under 1.5 seconds.
+        import re
+        for line in re.findall(r"animation: ([^;]+);", STYLE):
+            for seconds in re.findall(r"(\d*\.?\d+)s", line):
+                self.assertLess(float(seconds), 1.5, line)
+
+
 class TestServer(unittest.TestCase):
     def setUp(self):
         self.server = make_server(PROBLEMS, port=0)  # port 0 = pick any free port
@@ -198,6 +281,14 @@ class TestServer(unittest.TestCase):
         _, text = self.request("GET", "/", cookie=cookie)
         self.assertIn("aria-label='Archer'", text)
         self.assertNotIn("aria-label='Wizard'", text)
+
+    def test_R7_wrong_answer_over_the_server_shows_the_foe_attacking(self):
+        resp, _ = self.request("POST", "/start")
+        cookie = resp.getheader("Set-Cookie").split(";")[0]
+        self.request("POST", "/answer", {"answer": "wrong"}, cookie=cookie)
+        _, text = self.request("GET", "/", cookie=cookie)
+        self.assertIn("class='fighter foe attack'", text)
+        self.assertIn("class='fighter hero hurt'", text)
 
 class TestMain(unittest.TestCase):
     def test_parse_args_defaults(self):

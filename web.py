@@ -46,6 +46,42 @@ form { text-align: center; }
 .fighter { position: relative; display: grid; }
 .fighter > .sprite { grid-area: 1 / 1; }
 .info { text-align: center; margin: 8px 0 0; }
+/* Attack animations (R7). The server adds these classes after each answer, and the
+   browser plays them once when the page loads. */
+@keyframes lunge-right { 0%, 100% { transform: none; } 40% { transform: translateX(70px) scale(1.1); } }
+@keyframes lunge-left { 0%, 100% { transform: none; } 40% { transform: translateX(-70px) scale(1.1); } }
+@keyframes shake { 0%, 100% { transform: none; } 20% { transform: translateX(-10px); }
+                   40% { transform: translateX(10px); } 60% { transform: translateX(-6px); }
+                   80% { transform: translateX(6px); } }
+@keyframes flash { 0%, 100% { filter: none; }
+                   20%, 60% { filter: sepia(1) saturate(8) hue-rotate(-50deg); }
+                   40%, 80% { filter: brightness(2); } }
+@keyframes rise { from { opacity: 0; transform: translateY(16px); }
+                  to { opacity: 1; transform: translateY(-8px); } }
+@keyframes fall-left { to { transform: rotate(-90deg); opacity: 0.5; } }
+@keyframes fall-right { to { transform: rotate(90deg); opacity: 0.5; } }
+@keyframes slide-in { from { transform: translateX(200px); opacity: 0; } }
+@keyframes pop { 0% { transform: scale(0); } 70% { transform: scale(1.3); } 100% { transform: scale(1); } }
+.hero.attack { animation: lunge-right 0.5s ease-out; }
+.foe.attack { animation: lunge-left 0.5s ease-out; }
+.hurt { animation: shake 0.45s 0.2s, flash 0.7s 0.2s; transform-origin: bottom center; }
+.hero.hurt.ko { animation: shake 0.45s 0.2s, flash 0.7s 0.2s, fall-left 0.6s 0.8s forwards; }
+.foe.hurt.ko { animation: shake 0.45s 0.2s, flash 0.7s 0.2s, fall-right 0.6s 0.8s forwards; }
+.foe.enter { animation: slide-in 0.6s 1.2s ease-out both; }
+.dmg { position: absolute; top: 4px; width: 120px; text-align: center; font-weight: bold;
+       font-size: 1.6em; color: #ff4d6d; text-shadow: 0 2px 0 #000;
+       animation: rise 0.5s 0.2s both; }
+.dmg.crit { color: #ffd166; }
+.at-hero { left: 28px; }
+.at-foe { right: 28px; }
+.ko-banner { position: absolute; left: 0; right: 0; top: 30%; text-align: center;
+             font-size: 2.6em; font-weight: 900; color: #ffd166; text-shadow: 0 3px 0 #9d0208;
+             animation: pop 0.4s 0.8s both; }
+@media (prefers-reduced-motion: reduce) {
+  /* No movement, but the red flash still shows who was hit. */
+  .stage *, .dmg, .ko-banner { animation: none !important; }
+  .stage .hurt { animation: flash 0.7s 0.2s 2 !important; }
+}
 .picker { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin: 8px 0 14px; }
 .picker label { background: #2b2945; border: 3px solid transparent; border-radius: 12px;
                 padding: 6px 10px; cursor: pointer; }
@@ -94,8 +130,35 @@ def render_title():
                 + start_form("Begin your quest"))
 
 
+def turn_effects(game):
+    """Turn the last attack into CSS classes and overlays for the stage (R7).
+
+    Returns (hero_classes, foe_classes, overlays_html). The attacker gets `attack`
+    (a lunge), the fighter that was hit gets `hurt` (shake and red flash) and a damage
+    number. A knocked-out fighter also gets `ko` (falls over). If the knockout brought
+    in a new opponent, the defeated one is gone, so the new one gets `enter` instead.
+    """
+    turn = game.last_turn
+    if turn is None:
+        return "", "", ""
+    target = "foe" if turn.attacker == "hero" else "hero"
+    classes = {"hero": "", "foe": ""}
+    classes[turn.attacker] = " attack"
+    new_foe_arrived = turn.knockout and target == "foe" and game.status == "playing"
+    if new_foe_arrived:
+        classes["foe"] = " enter"
+    else:
+        classes[target] = " hurt ko" if turn.knockout else " hurt"
+    crit_class, crit_text = (" crit", "CRIT ") if turn.crit else ("", "")
+    overlays = f"<div class='dmg at-{target}{crit_class}'>{crit_text}-{turn.damage}</div>"
+    if turn.knockout:
+        overlays += "<div class='ko-banner'>K.O.!</div>"
+    return classes["hero"], classes["foe"], overlays
+
+
 def render_game(game):
     opp = game.opponent
+    hero_fx, foe_fx, overlays = turn_effects(game)
     parts = [
         # Health bars across the top: you on the left, the opponent on the right (R5).
         "<div class='hud'>",
@@ -105,8 +168,9 @@ def render_game(game):
         "</div>",
         # The stage: both fighters on one floor, facing each other (R5, R6).
         "<div class='stage'>",
-        f"<div class='fighter hero'>{render_hero(game.hero, FIGHTER_SIZE, 'right')}</div>",
-        f"<div class='fighter foe'>{render_monster(opp, FIGHTER_SIZE, 'left')}</div>",
+        f"<div class='fighter hero{hero_fx}'>{render_hero(game.hero, FIGHTER_SIZE, 'right')}</div>",
+        f"<div class='fighter foe{foe_fx}'>{render_monster(opp, FIGHTER_SIZE, 'left')}</div>",
+        overlays,
         "</div><div class='floor'></div>",
         f"<p class='info'>Battle {game.stage + 1} of {len(game.opponents)} · Score {game.score}"
         f" · Streak {game.streak}</p>",
