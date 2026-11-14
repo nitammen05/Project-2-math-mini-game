@@ -7,8 +7,8 @@ from urllib.parse import urlencode
 import main
 from game import Game
 from problems import Problem
-from sprites import DEFAULT_HERO, HEROES, MONSTERS
-from web import make_server, render_game, render_title
+from sprites import DEFAULT_HERO, HEROES, MIRROR, MONSTERS, render_hero, render_monster
+from web import FIGHTER_SIZE, make_server, render_game, render_title
 
 PROBLEMS = {"addition": [Problem("addition", "1 + 1", 2)],
             "multiplication": [Problem("multiplication", "<b>3 x 3</b>", 9)]}
@@ -81,6 +81,52 @@ class TestSpriteRendering(unittest.TestCase):
         for key in HEROES:
             self.assertIn(f"name='hero' value='{key}'", html)
         self.assertIn("value='ninja' checked", html)
+
+
+def between(html, start, end):
+    """The part of html from the first `start` up to the next `end`."""
+    i = html.index(start)
+    return html[i:html.index(end, i)]
+
+
+class TestFightingLayout(unittest.TestCase):
+    """Round 3: classic fighting-game screen (R5, R6)."""
+
+    def test_R5_health_bars_are_the_first_thing_on_the_battle_screen(self):
+        html = render_game(Game(PROBLEMS))
+        self.assertIn("<body><div class='hud'>", html)
+
+    def test_R5_hero_bar_on_the_left_and_opponent_bar_on_the_right(self):
+        hud = between(render_game(Game(PROBLEMS)), "class='hud'", "class='stage'")
+        self.assertLess(hud.index("hp hero"), hud.index("hp foe"))
+        self.assertIn("HP 10/10", hud)
+        self.assertIn("Slime of Sums", hud)
+        self.assertIn("HP 3/3", hud)
+
+    def test_R5_fighters_stand_on_the_stage_below_the_bars_hero_left(self):
+        html = render_game(Game(PROBLEMS, hero="wizard"))
+        stage = between(html, "class='stage'", "class='floor'")
+        self.assertLess(stage.index("aria-label='Wizard'"),
+                        stage.index("aria-label='Slime of Sums'"))
+        self.assertLess(html.index("class='hud'"), html.index("class='stage'"))
+        self.assertLess(html.index("class='stage'"), html.index("1 + 1 = ?"))
+
+    def test_R5_end_screens_keep_the_fighting_layout(self):
+        g = Game(PROBLEMS)
+        while g.status == "playing":
+            g.answer("wrong")
+        html = render_game(g)
+        self.assertIn("<body><div class='hud'>", html)
+        self.assertIn("HP 0/10", html)
+
+    def test_R6_battle_fighters_face_each_other(self):
+        g = Game(PROBLEMS, hero="archer")
+        while g.stage == 0:
+            g.answer(str(g.current_problem.answer))   # now facing the Orc of Times
+        html = render_game(g)
+        self.assertIn(render_hero("archer", size=FIGHTER_SIZE, facing="right"), html)
+        self.assertIn(render_monster(g.opponent, size=FIGHTER_SIZE, facing="left"), html)
+        self.assertIn(MIRROR, html)   # the orc was drawn facing right
 
 
 class TestServer(unittest.TestCase):

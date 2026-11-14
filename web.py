@@ -30,9 +30,22 @@ input[type=text] { font-size: 1.4em; width: 8em; padding: 6px; }
 button { font-size: 1.2em; padding: 8px 18px; border: 0; border-radius: 8px;
          background: #ffd166; color: #1d1b2f; cursor: pointer; }
 form { text-align: center; }
-.arena { display: flex; gap: 12px; }
-.arena > div { flex: 1; text-align: center; }
 .sprite { display: block; margin: 0 auto; }
+/* Round 3: fighting-game screen. Health bars on top (R5)... */
+.hud { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.hud .hp { flex: 1; margin: 0; padding: 8px 10px; }
+.hud .foe { text-align: right; }
+.hud .vs { font-weight: bold; font-size: 1.3em; color: #ffd166; }
+.hud .hero .bar { display: flex; justify-content: flex-end; } /* bars drain outward */
+/* ...then a stage with both fighters standing on one floor. */
+.stage { position: relative; display: flex; justify-content: space-between;
+         align-items: flex-end; padding: 24px 28px 0; border-radius: 12px 12px 0 0;
+         background: linear-gradient(#3a2f6b, #2b2945 70%); overflow: hidden; }
+.floor { height: 14px; border-radius: 0 0 12px 12px;
+         background: repeating-linear-gradient(90deg, #7a5c3e 0 24px, #6b4f35 24px 48px); }
+.fighter { position: relative; display: grid; }
+.fighter > .sprite { grid-area: 1 / 1; }
+.info { text-align: center; margin: 8px 0 0; }
 .picker { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin: 8px 0 14px; }
 .picker label { background: #2b2945; border: 3px solid transparent; border-radius: 12px;
                 padding: 6px 10px; cursor: pointer; }
@@ -42,16 +55,22 @@ form { text-align: center; }
 """
 
 
-def page(body):
+FIGHTER_SIZE = 120   # pixels; how big the fighters are drawn on the stage
+
+
+def page(body, heading=True):
+    """A full HTML page. The battle screen leaves out the big heading so the
+    health bars can sit at the very top (R5)."""
+    title = "<h1>Math Quest</h1>" if heading else ""
     return ("<!doctype html><html><head><meta charset='utf-8'>"
             "<meta name='viewport' content='width=device-width, initial-scale=1'>"
             f"<title>Math Quest</title><style>{STYLE}</style></head>"
-            f"<body><h1>Math Quest</h1>{body}</body></html>")
+            f"<body>{title}{body}</body></html>")
 
 
 def hp_bar(label, hp, max_hp, css_class):
     percent = round(100 * hp / max_hp)
-    return (f"<div class='card {css_class}'><b>{escape(label)}</b> — HP {hp}/{max_hp}"
+    return (f"<div class='card hp {css_class}'><b>{escape(label)}</b> — HP {hp}/{max_hp}"
             f"<div class='bar'><div class='fill' style='width:{percent}%'></div></div></div>")
 
 
@@ -78,12 +97,19 @@ def render_title():
 def render_game(game):
     opp = game.opponent
     parts = [
-        f"<p>Battle {game.stage + 1} of {len(game.opponents)} · Score {game.score}"
-        f" · Streak {game.streak}</p>",
-        "<div class='arena'>",
-        f"<div>{render_hero(game.hero)}{hp_bar('You', game.player_hp, PLAYER_MAX_HP, 'hero')}</div>",
-        f"<div>{render_monster(opp)}{hp_bar(opp.name, game.opponent_hp, opp.max_hp, 'foe')}</div>",
+        # Health bars across the top: you on the left, the opponent on the right (R5).
+        "<div class='hud'>",
+        hp_bar("You", game.player_hp, PLAYER_MAX_HP, "hero"),
+        "<div class='vs'>VS</div>",
+        hp_bar(opp.name, game.opponent_hp, opp.max_hp, "foe"),
         "</div>",
+        # The stage: both fighters on one floor, facing each other (R5, R6).
+        "<div class='stage'>",
+        f"<div class='fighter hero'>{render_hero(game.hero, FIGHTER_SIZE, 'right')}</div>",
+        f"<div class='fighter foe'>{render_monster(opp, FIGHTER_SIZE, 'left')}</div>",
+        "</div><div class='floor'></div>",
+        f"<p class='info'>Battle {game.stage + 1} of {len(game.opponents)} · Score {game.score}"
+        f" · Streak {game.streak}</p>",
         f"<p class='message'>{escape(game.message)}</p>",
     ]
     if game.status == "playing":
@@ -98,7 +124,7 @@ def render_game(game):
     else:
         parts.append(f"<div class='card'><h2>Game over. Final score: {game.score}</h2></div>"
                      + start_form("Try again", game.hero))
-    return page("".join(parts))
+    return page("".join(parts), heading=False)
 
 
 def make_handler(problems_by_category):
