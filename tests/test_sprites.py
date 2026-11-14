@@ -2,8 +2,8 @@
 import unittest
 
 from game import OPPONENTS
-from sprites import (DEFAULT_HERO, HEROES, MONSTERS, hero_or_default,
-                     render_hero, render_monster)
+from sprites import (DEFAULT_HERO, HEROES, MIRROR, MONSTERS, UNKNOWN_MONSTER,
+                     hero_or_default, render_hero, render_monster)
 
 
 class TestHeroSprites(unittest.TestCase):
@@ -63,6 +63,41 @@ class TestMonsterSprites(unittest.TestCase):
         html = render_monster(Opponent("Mystery Foe", "addition", 1, 1))
         self.assertTrue(html.startswith("<svg"))
         self.assertIn("aria-label='Mystery Foe'", html)
+
+
+class TestFacing(unittest.TestCase):
+    """Round 3: fighters face each other (R6)."""
+
+    def test_R6_every_sprite_records_which_way_it_faces(self):
+        for sprite in [*HEROES.values(), *MONSTERS.values(), UNKNOWN_MONSTER]:
+            self.assertIn(sprite.faces, ("left", "right"), sprite.name)
+
+    def test_R6_heroes_are_mirrored_only_if_drawn_facing_left(self):
+        for key, hero in HEROES.items():
+            html = render_hero(key, facing="right")
+            self.assertEqual(MIRROR in html, hero.faces == "left", key)
+
+    def test_R6_monsters_are_mirrored_only_if_drawn_facing_right(self):
+        for opponent in OPPONENTS:
+            html = render_monster(opponent, facing="left")
+            self.assertEqual(MIRROR in html, MONSTERS[opponent.sprite].faces == "right",
+                             opponent.name)
+
+    def test_R6_orc_holds_its_axe_on_the_right_so_it_is_mirrored(self):
+        orc = next(o for o in OPPONENTS if o.sprite == "orc")
+        self.assertEqual(MONSTERS["orc"].faces, "right")
+        html = render_monster(orc, facing="left")
+        self.assertIn(MIRROR, html)
+        self.assertIn(MONSTERS["orc"].svg, html)   # same picture, just mirrored
+
+    def test_R6_without_a_facing_the_sprite_is_drawn_as_is(self):
+        self.assertNotIn(MIRROR, render_monster(OPPONENTS[2]))
+        for key in HEROES:
+            self.assertNotIn(MIRROR, render_hero(key))
+
+    def test_R6_bad_facing_value_is_rejected(self):
+        with self.assertRaises(ValueError):
+            render_hero(DEFAULT_HERO, facing="up")
 
 
 if __name__ == "__main__":

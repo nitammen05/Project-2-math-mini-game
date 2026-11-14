@@ -13,6 +13,7 @@ from html import escape
 class Sprite:
     name: str   # shown to the player, and read out by screen readers
     svg: str    # the shapes inside the <svg> element
+    faces: str = "right"   # which way the drawing looks: "left" or "right" (R6)
 
 
 HEROES = {
@@ -67,9 +68,10 @@ MONSTERS = {
     "slime": Sprite("Slime", """
         <path d='M8 54 Q8 20 32 18 Q56 20 56 54 Z' fill='#80ed99'/>
         <ellipse cx='24' cy='30' rx='5' ry='3' fill='#c7f9cc'/>
-        <circle cx='25' cy='40' r='4' fill='#fff'/><circle cx='25' cy='41' r='2' fill='#222'/>
-        <circle cx='39' cy='40' r='4' fill='#fff'/><circle cx='39' cy='41' r='2' fill='#222'/>
-        <path d='M27 48 Q32 52 37 48' stroke='#222' stroke-width='2' fill='none'/>"""),
+        <circle cx='25' cy='40' r='4' fill='#fff'/><circle cx='23.5' cy='41' r='2' fill='#222'/>
+        <circle cx='39' cy='40' r='4' fill='#fff'/><circle cx='37.5' cy='41' r='2' fill='#222'/>
+        <path d='M27 48 Q32 52 37 48' stroke='#222' stroke-width='2' fill='none'/>""",
+        faces="left"),
     "goblin": Sprite("Goblin", """
         <rect x='22' y='36' width='20' height='18' rx='3' fill='#7f5539'/>
         <circle cx='32' cy='26' r='12' fill='#6a994e'/>
@@ -77,9 +79,12 @@ MONSTERS = {
         <path d='M44 24 L60 16 L44 30 Z' fill='#6a994e'/>
         <circle cx='27' cy='24' r='2.5' fill='#ffd60a'/>
         <circle cx='37' cy='24' r='2.5' fill='#ffd60a'/>
+        <circle cx='26' cy='24' r='1.2' fill='#222'/>
+        <circle cx='36' cy='24' r='1.2' fill='#222'/>
         <path d='M26 32 L29 30 L32 32 L35 30 L38 32' stroke='#222' stroke-width='1.5' fill='none'/>
         <rect x='24' y='54' width='5' height='6' fill='#6a994e'/>
-        <rect x='35' y='54' width='5' height='6' fill='#6a994e'/>"""),
+        <rect x='35' y='54' width='5' height='6' fill='#6a994e'/>""",
+        faces="left"),
     "orc": Sprite("Orc", """
         <rect x='14' y='32' width='36' height='24' rx='6' fill='#5c4033'/>
         <rect x='18' y='10' width='28' height='26' rx='8' fill='#4f772d'/>
@@ -98,7 +103,8 @@ MONSTERS = {
         <circle cx='38' cy='18' r='2' fill='#222'/>
         <path d='M24 32 Q32 28 40 32' stroke='#222' stroke-width='2' fill='none'/>
         <rect x='4' y='30' width='8' height='28' rx='4' fill='#7f5539'/>
-        <circle cx='8' cy='28' r='6' fill='#7f5539'/>"""),
+        <circle cx='8' cy='28' r='6' fill='#7f5539'/>""",
+        faces="left"),
     "dragon": Sprite("Dragon", """
         <path d='M20 30 L2 10 L10 34 Z' fill='#9d0208'/>
         <path d='M44 30 L62 10 L54 34 Z' fill='#9d0208'/>
@@ -109,14 +115,18 @@ MONSTERS = {
         <path d='M40 14 L42 4 L36 12 Z' fill='#ffba08'/>
         <circle cx='28' cy='20' r='2' fill='#ffd60a'/>
         <circle cx='36' cy='20' r='2' fill='#ffd60a'/>
+        <circle cx='27' cy='20' r='1' fill='#370617'/>
+        <circle cx='35' cy='20' r='1' fill='#370617'/>
         <path d='M28 28 Q32 31 36 28' stroke='#370617' stroke-width='2' fill='none'/>
-        <path d='M30 32 Q32 38 34 32' fill='#ff8800'/>"""),
+        <path d='M30 32 Q32 38 34 32' fill='#ff8800'/>""",
+        faces="left"),
 }
 
 # Shown if an opponent has no sprite of its own (e.g. a future, unfinished one).
 UNKNOWN_MONSTER = Sprite("Unknown monster", """
     <circle cx='32' cy='32' r='22' fill='#6c757d'/>
-    <text x='32' y='42' font-size='28' text-anchor='middle' fill='#fff'>?</text>""")
+    <text x='32' y='42' font-size='28' text-anchor='middle' fill='#fff'>?</text>""",
+    faces="left")
 
 
 def hero_or_default(key):
@@ -124,19 +134,30 @@ def hero_or_default(key):
     return key if key in HEROES else DEFAULT_HERO
 
 
-def _svg(sprite, label, size):
+# Flips a drawing left-to-right on the 64 x 64 grid: x becomes 64 - x.
+MIRROR = "transform='matrix(-1 0 0 1 64 0)'"
+
+
+def _svg(sprite, label, size, facing=None):
+    """Build the <svg> element. If `facing` ("left"/"right") differs from the way the
+    sprite was drawn, the shapes are mirrored so it looks the other way (R6)."""
+    if facing not in (None, "left", "right"):
+        raise ValueError(f"facing must be 'left' or 'right', not {facing!r}")
+    shapes = sprite.svg
+    if facing and facing != sprite.faces:
+        shapes = f"<g {MIRROR}>{shapes}</g>"
     return (f"<svg class='sprite' role='img' aria-label='{escape(label, quote=True)}' "
             f"viewBox='0 0 64 64' width='{size}' height='{size}'>"
-            f"<title>{escape(label)}</title>{sprite.svg}</svg>")
+            f"<title>{escape(label)}</title>{shapes}</svg>")
 
 
-def render_hero(key, size=96):
+def render_hero(key, size=96, facing=None):
     """The <svg> element for a hero. Unknown keys get the default hero."""
     sprite = HEROES[hero_or_default(key)]
-    return _svg(sprite, sprite.name, size)
+    return _svg(sprite, sprite.name, size, facing)
 
 
-def render_monster(opponent, size=96):
+def render_monster(opponent, size=96, facing=None):
     """The <svg> element for an opponent, labelled with the opponent's full name."""
     sprite = MONSTERS.get(getattr(opponent, "sprite", ""), UNKNOWN_MONSTER)
-    return _svg(sprite, opponent.name, size)
+    return _svg(sprite, opponent.name, size, facing)
