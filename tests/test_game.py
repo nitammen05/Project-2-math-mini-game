@@ -129,5 +129,64 @@ class TestHeroChoice(unittest.TestCase):
         self.assertEqual(g.hero, "ninja")
 
 
+class TestLastTurn(unittest.TestCase):
+    """Round 3: the game remembers the last attack so the page can animate it (R7)."""
+
+    def test_R7_no_attack_before_the_first_answer(self):
+        self.assertIsNone(Game(make_problems(), random.Random(0)).last_turn)
+
+    def test_R7_correct_answer_is_a_hero_attack(self):
+        g = Game(make_problems(), random.Random(0))
+        g.answer(right(g))
+        t = g.last_turn
+        self.assertEqual(t.attacker, "hero")
+        self.assertEqual(t.damage, game.NORMAL_DAMAGE)
+        self.assertFalse(t.crit)
+        self.assertFalse(t.knockout)
+        self.assertEqual(t.foe, OPPONENTS[0])
+
+    def test_R7_wrong_answer_is_a_foe_attack(self):
+        g = Game(make_problems(), random.Random(0))
+        g.answer("wrong")
+        t = g.last_turn
+        self.assertEqual(t.attacker, "foe")
+        self.assertEqual(t.damage, OPPONENTS[0].attack)
+        self.assertFalse(t.crit)
+        self.assertFalse(t.knockout)
+
+    def test_R7_critical_hit_is_recorded(self):
+        strong = [Opponent("Wall", "addition", max_hp=99, attack=1)]
+        g = Game(make_problems(), random.Random(0), opponents=strong)
+        for _ in range(game.CRIT_STREAK):
+            g.answer(right(g))
+        self.assertTrue(g.last_turn.crit)
+        self.assertEqual(g.last_turn.damage, game.CRIT_DAMAGE)
+
+    def test_R7_knockout_remembers_the_defeated_opponent(self):
+        g = Game(make_problems(), random.Random(0))
+        while g.stage == 0:
+            g.answer(right(g))
+        t = g.last_turn
+        self.assertTrue(t.knockout)
+        self.assertEqual(t.attacker, "hero")
+        self.assertEqual(t.foe, OPPONENTS[0])     # the one that fell...
+        self.assertEqual(g.opponent, OPPONENTS[1])  # ...not the one that arrives
+
+    def test_R7_player_knockout_when_game_is_lost(self):
+        g = Game(make_problems(), random.Random(0))
+        while g.status == "playing":
+            g.answer("wrong")
+        self.assertEqual(g.last_turn.attacker, "foe")
+        self.assertTrue(g.last_turn.knockout)
+
+    def test_R7_answers_after_the_game_ends_do_not_change_last_turn(self):
+        g = Game(make_problems(), random.Random(0))
+        while g.status == "playing":
+            g.answer("wrong")
+        before = g.last_turn
+        g.answer("1")
+        self.assertIs(g.last_turn, before)
+
+
 if __name__ == "__main__":
     unittest.main()

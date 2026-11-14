@@ -19,6 +19,16 @@ class Opponent:
     sprite: str = ""  # key into sprites.MONSTERS; should match the name (R4)
 
 
+@dataclass(frozen=True)
+class Turn:
+    """What happened on the last answer, so the page can animate it (R7)."""
+    attacker: str          # "hero" (correct answer) or "foe" (wrong answer)
+    damage: int            # HP the other fighter lost
+    crit: bool             # was it a critical hit?
+    knockout: bool         # did the hit bring the other fighter to 0 HP?
+    foe: Opponent          # the opponent in this exchange (even if it was just defeated)
+
+
 # Ordered from weakest to strongest: harder math = tougher opponent.
 OPPONENTS = [
     Opponent("Slime of Sums", "addition", max_hp=3, attack=1, sprite="slime"),
@@ -52,6 +62,7 @@ class Game:
         self.opponent_hp = self.opponent.max_hp
         self.status = "playing"          # "playing", "won", or "lost"
         self.message = f"A wild {self.opponent.name} appears!"
+        self.last_turn = None            # no one has attacked yet (R7)
         self._unused = {}                # problems not yet shown, per category
         self.current_problem = self._next_problem()
 
@@ -88,6 +99,7 @@ class Game:
         damage = CRIT_DAMAGE if crit else NORMAL_DAMAGE
         self.opponent_hp = max(0, self.opponent_hp - damage)
         self.score += POINTS_PER_HIT * damage
+        self.last_turn = Turn("hero", damage, crit, self.opponent_hp == 0, self.opponent)
         self.message = ("CRITICAL HIT! " if crit else "Correct! ") + \
             f"You deal {damage} damage to the {self.opponent.name}."
         if self.opponent_hp == 0:
@@ -96,6 +108,8 @@ class Game:
     def _opponent_hits(self, problem):
         self.streak = 0
         self.player_hp = max(0, self.player_hp - self.opponent.attack)
+        self.last_turn = Turn("foe", self.opponent.attack, False, self.player_hp == 0,
+                              self.opponent)
         self.message = (f"Wrong! {problem.question} = {problem.answer}. "
                         f"The {self.opponent.name} hits you for {self.opponent.attack} damage.")
         if self.player_hp == 0:
