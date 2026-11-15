@@ -13,3 +13,8 @@ The program must create a fun game that both helps the user learn and enjoy lear
 - I want the game to use a classic fighting game screen set-up
 - I want there to be health bars on the top of the screen, short animations indicating attacks and damage taken, and each sprite should be standing on either side of the screen facing eachother.
 - The animations can be simple but it must be obvious who is attacking and who is taking damage.
+
+**Round 4**
+- I now want their to be a cool background for each boss fitting the theme of their boss name
+- I want the player sprite to move forward after defeating an opponent and into the new background/setting
+- If the user's health reaches 0, I want their sprite to sink into the ground and the background should be dirt and bones
