@@ -13,6 +13,7 @@ from urllib.parse import parse_qs
 import secrets
 
 from game import Game, PLAYER_MAX_HP
+from scenes import GRAVEYARD, scene_css, scene_key
 from sprites import DEFAULT_HERO, HEROES, render_hero, render_monster
 
 STYLE = """
@@ -40,7 +41,17 @@ form { text-align: center; }
 /* ...then a stage with both fighters standing on one floor. */
 .stage { position: relative; display: flex; justify-content: space-between;
          align-items: flex-end; padding: 24px 28px 0; border-radius: 12px 12px 0 0;
-         background: linear-gradient(#3a2f6b, #2b2945 70%); overflow: hidden; }
+         background: linear-gradient(#3a2f6b, #2b2945 70%); overflow: hidden;
+         min-height: 180px; }
+/* Round 4: the stage and floor sit in a "world" painted with the opponent's scene (R8).
+   During a change of scene, the old scene is laid on top as a backdrop (R9, R10). The
+   fighters and numbers are lifted above it with z-index. */
+.world { position: relative; overflow: hidden; border-radius: 12px; }
+.backdrop { position: absolute; inset: 0; z-index: 1; display: flex; flex-direction: column; }
+.backdrop .sky { flex: 1; }
+.backdrop .ground { height: 14px; }
+.fighter { z-index: 2; }
+.dmg, .ko-banner { z-index: 3; }
 .floor { height: 14px; border-radius: 0 0 12px 12px;
          background: repeating-linear-gradient(90deg, #7a5c3e 0 24px, #6b4f35 24px 48px); }
 .fighter { position: relative; display: grid; }
@@ -65,7 +76,12 @@ form { text-align: center; }
 .hero.attack { animation: lunge-right 0.5s ease-out; }
 .foe.attack { animation: lunge-left 0.5s ease-out; }
 .hurt { animation: shake 0.45s 0.2s, flash 0.7s 0.2s; transform-origin: bottom center; }
-.hero.hurt.ko { animation: shake 0.45s 0.2s, flash 0.7s 0.2s, fall-left 0.6s 0.8s forwards; }
+/* Round 4 (R10): a knocked-out hero falls over, then sinks below the stage's bottom
+   edge, where overflow: hidden makes it vanish into the ground. */
+@keyframes sink { from { transform: rotate(-90deg); opacity: 0.5; }
+                  to { transform: translateY(150px) rotate(-90deg); opacity: 0.5; } }
+.hero.hurt.ko { animation: shake 0.45s 0.2s, flash 0.7s 0.2s, fall-left 0.6s 0.8s forwards,
+                           sink 1.2s 1.4s ease-in forwards; }
 .foe.hurt.ko { animation: shake 0.45s 0.2s, flash 0.7s 0.2s, fall-right 0.6s 0.8s forwards; }
 .foe.enter { animation: slide-in 0.6s 1.2s ease-out both; }
 .dmg { position: absolute; top: 4px; width: 120px; text-align: center; font-weight: bold;
@@ -77,10 +93,30 @@ form { text-align: center; }
 .ko-banner { position: absolute; left: 0; right: 0; top: 30%; text-align: center;
              font-size: 2.6em; font-weight: 900; color: #ffd166; text-shadow: 0 3px 0 #9d0208;
              animation: pop 0.4s 0.8s both; }
+/* Round 4 (R9): moving on to the next scene. The walk is put on the hero's sprite, not
+   on the fighter box, so it never clashes with the fighter's lunge (both use transform).
+   walk-in has no backwards fill, so it only takes over once it starts. */
+@keyframes walk-out { 0% { transform: none; } 25% { transform: translate(130px, -6px); }
+                      50% { transform: translate(260px, 0); } 75% { transform: translate(390px, -6px); }
+                      100% { transform: translate(560px, 0); } }
+@keyframes walk-in { 0% { transform: translateX(-200px); } 33% { transform: translate(-133px, -6px); }
+                     66% { transform: translate(-66px, 0); } 85% { transform: translate(-20px, -6px); }
+                     100% { transform: none; } }
+@keyframes pan-away { to { transform: translateX(-100%); } }
+@keyframes fade-away { to { opacity: 0; } }
+.advance .hero > .sprite { animation: walk-out 0.5s 0.9s ease-in forwards, walk-in 0.6s 1.45s ease-out forwards; }
+.advance > .backdrop { animation: pan-away 0.8s 1.2s ease-in-out forwards; }
+.advance .dmg { animation: rise 0.5s 0.2s both, fade-away 0.3s 1.2s forwards; }
+.advance .ko-banner { animation: pop 0.4s 0.8s both, fade-away 0.3s 1.2s forwards; }
+/* R10: the opponent's scene fades, leaving dirt and bones, as the hero sinks. */
+.perish > .backdrop { animation: fade-away 1s 1.4s forwards; }
 @media (prefers-reduced-motion: reduce) {
   /* No movement, but the red flash still shows who was hit. */
   .stage *, .dmg, .ko-banner { animation: none !important; }
   .stage .hurt { animation: flash 0.7s 0.2s 2 !important; }
+  /* Round 4: the new scene simply appears, and a defeated hero is shown faded. */
+  .backdrop { display: none; }
+  .perish .hero { opacity: 0.35; }
 }
 .picker { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin: 8px 0 14px; }
 .picker label { background: #2b2945; border: 3px solid transparent; border-radius: 12px;
@@ -88,7 +124,7 @@ form { text-align: center; }
 .picker label:has(input:checked) { border-color: #ffd166; }
 .picker input { position: absolute; opacity: 0; }
 .picker input:focus-visible + .sprite { outline: 2px dashed #ffd166; }
-"""
+""" + scene_css()   # one background rule per scene (R8)
 
 
 FIGHTER_SIZE = 120   # pixels; how big the fighters are drawn on the stage
@@ -144,8 +180,7 @@ def turn_effects(game):
     target = "foe" if turn.attacker == "hero" else "hero"
     classes = {"hero": "", "foe": ""}
     classes[turn.attacker] = " attack"
-    new_foe_arrived = turn.knockout and target == "foe" and game.status == "playing"
-    if new_foe_arrived:
+    if moved_on(game):
         classes["foe"] = " enter"
     else:
         classes[target] = " hurt ko" if turn.knockout else " hurt"
@@ -156,9 +191,37 @@ def turn_effects(game):
     return classes["hero"], classes["foe"], overlays
 
 
+def moved_on(game):
+    """True on the page right after a knockout that brought in the next opponent."""
+    turn = game.last_turn
+    return bool(turn and turn.knockout and turn.attacker == "hero"
+                and game.status == "playing")
+
+
+def scene_effects(game):
+    """Choose the scene behind the fighters, and an old scene that is leaving (R8-R10).
+
+    Returns (world_classes, backdrop_html). Usually the scene is the opponent's own.
+    Right after a knockout that brings in a new opponent, the world gets `advance`
+    and the defeated opponent's scene is laid on top, to slide away as the hero walks
+    on (R9). When the player has lost, the scene is dirt and bones, with the winning
+    opponent's scene on top, fading away (`perish`, R10).
+    """
+    if game.status == "lost":
+        scene, leaving, how = GRAVEYARD, scene_key(game.opponent), " perish"
+    elif moved_on(game):
+        scene, leaving, how = scene_key(game.opponent), scene_key(game.last_turn.foe), " advance"
+    else:
+        return f"scene-{scene_key(game.opponent)}", ""
+    backdrop = (f"<div class='backdrop scene-{leaving}' aria-hidden='true'>"
+                "<div class='sky'></div><div class='ground'></div></div>")
+    return f"scene-{scene}{how}", backdrop
+
+
 def render_game(game):
     opp = game.opponent
     hero_fx, foe_fx, overlays = turn_effects(game)
+    world, backdrop = scene_effects(game)
     parts = [
         # Health bars across the top: you on the left, the opponent on the right (R5).
         "<div class='hud'>",
@@ -167,11 +230,12 @@ def render_game(game):
         hp_bar(opp.name, game.opponent_hp, opp.max_hp, "foe"),
         "</div>",
         # The stage: both fighters on one floor, facing each other (R5, R6).
-        "<div class='stage'>",
+        # ...in front of the opponent's scene (R8), which may be changing (R9, R10).
+        f"<div class='world {world}'>{backdrop}<div class='stage'>",
         f"<div class='fighter hero{hero_fx}'>{render_hero(game.hero, FIGHTER_SIZE, 'right')}</div>",
         f"<div class='fighter foe{foe_fx}'>{render_monster(opp, FIGHTER_SIZE, 'left')}</div>",
         overlays,
-        "</div><div class='floor'></div>",
+        "</div><div class='floor'></div></div>",
         f"<p class='info'>Battle {game.stage + 1} of {len(game.opponents)} · Score {game.score}"
         f" · Streak {game.streak}</p>",
         f"<p class='message'>{escape(game.message)}</p>",
