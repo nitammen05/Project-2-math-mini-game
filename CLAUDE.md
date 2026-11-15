@@ -20,3 +20,7 @@ Standing rules added after Round 3:
 
 13. When a new test fails, read why before changing code: the test may be the thing that is wrong. Never change an earlier round's test to make new code pass.
 14. Tests only check the HTML text, so check anything visual (layout, sprites, animations) by looking at it too, for example with a headless Chrome screenshot, and ask the student to try it in the browser.
+
+Standing rule added after Round 4:
+
+15. Every page contains the whole `<style>` block, and end screens also contain the hero picker. So a test that checks something is *absent* (a class name, an `<svg>`) must look inside the right part of the page (for example with `between(...)`), not the whole page.
