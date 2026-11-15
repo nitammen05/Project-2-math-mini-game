@@ -40,3 +40,41 @@ New requirement IDs continue from Round 2 (R1–R4 are unchanged):
 
 Constraints carried over: Python only, standard library only, started from the
 terminal with `python3 main.py`, and all earlier tests keep passing.
+
+## Round 4: Themed backgrounds, moving on, and defeat
+
+New requirement IDs continue from Round 3 (R1–R7 are unchanged):
+
+- **R8** Each opponent fights in its own background scene that fits its name. The
+  monster half of the name sets the place, and the math half adds a small detail:
+  - Slime of Sums: **Slime Swamp**, a murky swamp with glowing `+` fireflies.
+  - Goblin of Minus: **Goblin Cave**, a cave with stalactites, torches and `−` marks
+    scratched in the wall.
+  - Orc of Times: **Orc War Camp**, a camp at sunset with a spiked wooden wall and
+    `×` banners.
+  - Troll of Division: **Troll Bridge**, a stone bridge over a river with a `÷` sign.
+  - Dragon of Powers: **Dragon's Volcano**, an erupting volcano with lava and a gold
+    hoard.
+  Each scene has its own sky (behind the fighters) and its own ground (the floor
+  they stand on). Every opponent has its own scene. An opponent with no scene gets a
+  plain one instead of breaking the page. The backgrounds are decoration only: they
+  are not read out by screen readers and are not fighters, so the battle page still
+  has exactly two sprite pictures.
+- **R9** After the player defeats an opponent and another one follows, the player's
+  sprite walks forward (to the right) off the old scene. The old scene then slides
+  away to the left, revealing the new opponent's scene, and the new opponent slides
+  in with it. The player's sprite then walks back in from the left to its place. This
+  happens once, on the page shown right after the knockout. Defeating the *last*
+  opponent does not move the player, because there is no next scene. With reduced
+  motion, the new scene simply appears with no walking or sliding.
+- **R10** When the player's HP reaches 0, the player's sprite falls over (as in R7)
+  and then sinks down into the ground until it is gone. The opponent's scene fades
+  away, and behind it is **Dirt and Bones**: an underground scene of dirt layers,
+  bones and skulls. The game-over screen keeps this scene. With reduced motion, the
+  scene changes at once and the defeated sprite is shown faded instead of sinking.
+
+Constraints carried over: Python only, standard library only, started from the
+terminal with `python3 main.py`, and all earlier tests keep passing. Every single
+animation still lasts under 1.5 seconds (R7). The walk-and-scroll in R9 is a chain of
+short animations, each started after a delay, so the whole change of scene takes
+about 2 seconds.
