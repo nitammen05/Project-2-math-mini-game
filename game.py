@@ -17,6 +17,7 @@ class Opponent:
     max_hp: int     # how many hits it takes to defeat
     attack: int     # damage dealt to the player on a wrong answer
     sprite: str = ""  # key into sprites.MONSTERS; should match the name (R4)
+    scene: str = ""   # key into scenes.SCENES: the background it fights in (R8)
 
 
 @dataclass(frozen=True)
@@ -31,11 +32,16 @@ class Turn:
 
 # Ordered from weakest to strongest: harder math = tougher opponent.
 OPPONENTS = [
-    Opponent("Slime of Sums", "addition", max_hp=3, attack=1, sprite="slime"),
-    Opponent("Goblin of Minus", "subtraction", max_hp=4, attack=2, sprite="goblin"),
-    Opponent("Orc of Times", "multiplication", max_hp=5, attack=2, sprite="orc"),
-    Opponent("Troll of Division", "division", max_hp=6, attack=3, sprite="troll"),
-    Opponent("Dragon of Powers", "exponents", max_hp=7, attack=4, sprite="dragon"),
+    Opponent("Slime of Sums", "addition", max_hp=3, attack=1, sprite="slime",
+             scene="swamp"),
+    Opponent("Goblin of Minus", "subtraction", max_hp=4, attack=2, sprite="goblin",
+             scene="cave"),
+    Opponent("Orc of Times", "multiplication", max_hp=5, attack=2, sprite="orc",
+             scene="camp"),
+    Opponent("Troll of Division", "division", max_hp=6, attack=3, sprite="troll",
+             scene="bridge"),
+    Opponent("Dragon of Powers", "exponents", max_hp=7, attack=4, sprite="dragon",
+             scene="volcano"),
 ]
 
 PLAYER_MAX_HP = 10
