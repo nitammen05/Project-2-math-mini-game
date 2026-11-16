@@ -24,3 +24,7 @@ Standing rules added after Round 3:
 Standing rule added after Round 4:
 
 15. Every page contains the whole `<style>` block, and end screens also contain the hero picker. So a test that checks something is *absent* (a class name, an `<svg>`) must look inside the right part of the page (for example with `between(...)`), not the whole page.
+
+Standing rule added after Round 5:
+
+16. A headless screenshot with `--virtual-time-budget` can show the page before any animation has run, so don't trust it for timing. Check end states by freezing the elements (`animation-play-state: paused` with a negative `animation-delay`), and ask the student to watch the order and speed of animations in a real browser.
