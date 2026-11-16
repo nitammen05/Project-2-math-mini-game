@@ -18,3 +18,9 @@ The program must create a fun game that both helps the user learn and enjoy lear
 - I now want their to be a cool background for each boss fitting the theme of their boss name
 - I want the player sprite to move forward after defeating an opponent and into the new background/setting
 - If the user's health reaches 0, I want their sprite to sink into the ground and the background should be dirt and bones
+
+**Round 5**
+- I want the sprites to be much more detailed
+- I want them to have much more detailed animations including idle animations
+- I want the player sprites to have specific names instead of "Ninja"
+- Also update the death screen so the opponent sprite dissapears along with the health bars
