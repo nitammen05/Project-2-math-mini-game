@@ -1,9 +1,10 @@
 """Round 5 tests: detailed sprites (R11), detailed and idle animations (R12),
 hero names (R13), and the defeat screen (R14)."""
+import re
 import unittest
 
-from game import Game
-from sprites import HEROES, render_hero
+from game import Game, OPPONENTS
+from sprites import HEROES, MIRROR, MONSTERS, render_hero, render_monster
 from web import render_game, render_title
 from tests.test_web import PROBLEMS, between
 
@@ -37,6 +38,83 @@ class TestHeroNames(unittest.TestCase):
         hud = between(render_game(Game(PROBLEMS, hero="ninja")), "class='hud'", "class='world")
         self.assertIn("<b>Kaito</b>", hud)
         self.assertNotIn("<b>You</b>", hud)
+
+
+SHAPES = re.compile(r"<(path|rect|circle|ellipse|line|polygon|polyline)\b")
+ALL_SPRITES = {**{f"hero {k}": h for k, h in HEROES.items()},
+               **{f"monster {k}": m for k, m in MONSTERS.items()}}
+
+
+def tags_with_class(svg, cls):
+    """Every opening tag in svg whose class list includes cls."""
+    return [t for t in re.findall(r"<[a-z]+\b[^>]*>", svg)
+            if re.search(rf"class='[^']*\b{cls}\b", t)]
+
+
+class TestDetailedSprites(unittest.TestCase):
+    """R11: sprites are drawn in much more detail."""
+
+    def test_R11_every_sprite_has_at_least_25_shapes(self):
+        for label, sprite in ALL_SPRITES.items():
+            self.assertGreaterEqual(len(SHAPES.findall(sprite.svg)), 25, label)
+
+    def test_R11_every_sprite_has_outlines(self):
+        for label, sprite in ALL_SPRITES.items():
+            self.assertIn("stroke='#1a1626'", sprite.svg, label)
+
+    def test_R11_every_sprite_has_a_ground_shadow(self):
+        for label, sprite in ALL_SPRITES.items():
+            self.assertIn("class='sp-shadow'", sprite.svg, label)
+
+    def test_R11_sprites_stay_on_the_64_grid_and_keep_their_facing(self):
+        self.assertIn("viewBox='0 0 64 64'", render_hero("knight"))
+        for opponent in OPPONENTS:
+            html = render_monster(opponent, facing="left")
+            self.assertIn(MONSTERS[opponent.sprite].svg, html)
+            self.assertEqual(MIRROR in html, MONSTERS[opponent.sprite].faces == "right")
+
+
+class TestAnimatedParts(unittest.TestCase):
+    """R12: each sprite marks the parts that the page's CSS animates."""
+
+    def test_R12_every_sprite_breathes_and_blinks(self):
+        for label, sprite in ALL_SPRITES.items():
+            self.assertEqual(len(tags_with_class(sprite.svg, "sp-body")), 1, label)
+            self.assertTrue(tags_with_class(sprite.svg, "sp-eye"), label)
+
+    def test_R12_every_sprite_has_something_loose_or_glowing(self):
+        for label, sprite in ALL_SPRITES.items():
+            moving = (tags_with_class(sprite.svg, "sp-sway")
+                      + tags_with_class(sprite.svg, "sp-glow"))
+            self.assertTrue(moving, label)
+
+    def test_R12_heroes_and_armed_monsters_have_one_weapon(self):
+        armed = [*(f"hero {k}" for k in HEROES), "monster goblin", "monster orc",
+                 "monster troll"]
+        for label in armed:
+            self.assertEqual(len(tags_with_class(ALL_SPRITES[label].svg, "sp-weapon")),
+                             1, label)
+
+    def test_R12_dragon_attacks_with_fire(self):
+        self.assertTrue(tags_with_class(MONSTERS["dragon"].svg, "sp-glow"))
+
+    def test_R12_weapons_drawn_facing_left_swing_the_other_way(self):
+        for label, sprite in ALL_SPRITES.items():
+            for tag in tags_with_class(sprite.svg, "sp-weapon"):
+                self.assertEqual("sp-left" in tag, sprite.faces == "left", label)
+
+    def test_R12_animated_parts_have_no_transform_attribute(self):
+        # A CSS animation on transform would replace the attribute and move the part.
+        for label, sprite in ALL_SPRITES.items():
+            for tag in re.findall(r"<[a-z]+\b[^>]*class='[^']*sp-[^>]*>", sprite.svg):
+                self.assertNotIn("transform=", tag, label)
+
+    def test_R12_part_class_names_do_not_clash_with_the_page(self):
+        # Page classes like 'hero', 'foe', 'sky' or 'fill' must not appear inside sprites.
+        for label, sprite in ALL_SPRITES.items():
+            for classes in re.findall(r"class='([^']*)'", sprite.svg):
+                for name in classes.split():
+                    self.assertTrue(name.startswith("sp-"), f"{label}: {name}")
 
 
 if __name__ == "__main__":
