@@ -14,7 +14,7 @@ import secrets
 
 from game import Game, PLAYER_MAX_HP
 from scenes import GRAVEYARD, scene_css, scene_key
-from sprites import DEFAULT_HERO, HEROES, render_hero, render_monster
+from sprites import DEFAULT_HERO, HEROES, hero_name, render_hero, render_monster
 
 STYLE = """
 body { font-family: system-ui, sans-serif; background: #1d1b2f; color: #f2f0ff;
@@ -152,7 +152,7 @@ def start_form(text, selected=DEFAULT_HERO):
     for key, hero in HEROES.items():
         checked = " checked" if key == selected else ""
         choices.append(f"<label><input type='radio' name='hero' value='{key}'{checked}>"
-                       f"{render_hero(key, size=72)}{escape(hero.name)}</label>")
+                       f"{render_hero(key, size=72)}{escape(hero.given_name)}</label>")
     return ("<form method='post' action='/start'><p>Choose your hero:</p>"
             f"<div class='picker'>{''.join(choices)}</div><button>{text}</button></form>")
 
@@ -225,7 +225,7 @@ def render_game(game):
     parts = [
         # Health bars across the top: you on the left, the opponent on the right (R5).
         "<div class='hud'>",
-        hp_bar("You", game.player_hp, PLAYER_MAX_HP, "hero"),
+        hp_bar(hero_name(game.hero), game.player_hp, PLAYER_MAX_HP, "hero"),
         "<div class='vs'>VS</div>",
         hp_bar(opp.name, game.opponent_hp, opp.max_hp, "foe"),
         "</div>",

@@ -14,10 +14,11 @@ class Sprite:
     name: str   # shown to the player, and read out by screen readers
     svg: str    # the shapes inside the <svg> element
     faces: str = "right"   # which way the drawing looks: "left" or "right" (R6)
+    given_name: str = ""   # a hero's personal name, shown to the player (R13)
 
 
 HEROES = {
-    "knight": Sprite("Knight", """
+    "knight": Sprite("Knight", given_name="Sir Aldric", svg="""
         <rect x='22' y='30' width='20' height='22' rx='3' fill='#9aa5b1'/>
         <circle cx='32' cy='20' r='11' fill='#c0c8d0'/>
         <rect x='24' y='18' width='16' height='4' fill='#33363d'/>
@@ -27,7 +28,7 @@ HEROES = {
         <path d='M10 30 h12 v14 l-6 6 l-6 -6 Z' fill='#457b9d'/>
         <rect x='24' y='52' width='6' height='8' fill='#5c5f66'/>
         <rect x='34' y='52' width='6' height='8' fill='#5c5f66'/>"""),
-    "wizard": Sprite("Wizard", """
+    "wizard": Sprite("Wizard", given_name="Zoltan", svg="""
         <path d='M18 58 L32 26 L46 58 Z' fill='#5e3c99'/>
         <circle cx='32' cy='24' r='8' fill='#f1c27d'/>
         <path d='M32 26 L26 40 L38 40 Z' fill='#eeeeee'/>
@@ -37,7 +38,7 @@ HEROES = {
         <circle cx='49.5' cy='14' r='4' fill='#4cc9f0'/>
         <circle cx='29' cy='23' r='1.3' fill='#222'/>
         <circle cx='35' cy='23' r='1.3' fill='#222'/>"""),
-    "archer": Sprite("Archer", """
+    "archer": Sprite("Archer", given_name="Wren", svg="""
         <rect x='24' y='30' width='16' height='20' rx='3' fill='#2d6a4f'/>
         <circle cx='32' cy='20' r='9' fill='#e0ac69'/>
         <path d='M22 18 Q32 4 42 18 L42 22 L22 22 Z' fill='#40916c'/>
@@ -48,7 +49,7 @@ HEROES = {
         <line x1='36' y1='34' x2='58' y2='34' stroke='#6d4c41' stroke-width='2'/>
         <rect x='25' y='50' width='5' height='10' fill='#6d4c41'/>
         <rect x='34' y='50' width='5' height='10' fill='#6d4c41'/>"""),
-    "ninja": Sprite("Ninja", """
+    "ninja": Sprite("Ninja", given_name="Kaito", svg="""
         <rect x='22' y='30' width='20' height='22' rx='4' fill='#4a4e69'/>
         <circle cx='32' cy='20' r='11' fill='#4a4e69'/>
         <rect x='23' y='17' width='18' height='6' rx='3' fill='#f1c27d'/>
@@ -149,6 +150,12 @@ def _svg(sprite, label, size, facing=None):
     return (f"<svg class='sprite' role='img' aria-label='{escape(label, quote=True)}' "
             f"viewBox='0 0 64 64' width='{size}' height='{size}'>"
             f"<title>{escape(label)}</title>{shapes}</svg>")
+
+
+def hero_name(key):
+    """The personal name of a hero, such as "Kaito" (R13). Unknown keys get the
+    default hero's name."""
+    return HEROES[hero_or_default(key)].given_name
 
 
 def render_hero(key, size=96, facing=None):
