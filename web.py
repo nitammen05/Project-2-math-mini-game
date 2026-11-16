@@ -145,6 +145,13 @@ form { text-align: center; }
 /* A knocked-out fighter lies still with its eyes shut. */
 .ko .sprite * { animation: none; }
 .ko .sp-eye { transform: scaleY(0.12); }
+/* Round 5 (R14): on the defeat screen, once the hero has fallen, the opponent
+   vanishes and the health bars and damage number fade, leaving only the sinking hero
+   in Dirt and Bones. They stay in the HTML; only the picture changes. */
+@keyframes vanish { to { opacity: 0; transform: translateY(-24px) scale(0.6); filter: blur(3px); } }
+.perish .fighter.foe { animation: lunge-left 0.5s ease-out, vanish 0.8s 1.4s ease-in forwards; }
+body:has(.perish) .hud { animation: fade-away 0.8s 1.4s forwards; }
+.perish .dmg { animation: rise 0.5s 0.2s both, fade-away 0.3s 1.4s forwards; }
 @media (prefers-reduced-motion: reduce) {
   /* No movement, but the red flash still shows who was hit. */
   .stage *, .dmg, .ko-banner, .sprite * { animation: none !important; }
@@ -152,6 +159,9 @@ form { text-align: center; }
   /* Round 4: the new scene simply appears, and a defeated hero is shown faded. */
   .backdrop { display: none; }
   .perish .hero { opacity: 0.35; }
+  /* Round 5: the opponent and health bars are simply gone. */
+  .perish .foe { opacity: 0; }
+  body:has(.perish) .hud { animation: none; opacity: 0; }
 }
 .picker { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin: 8px 0 14px; }
 .picker label { background: #2b2945; border: 3px solid transparent; border-radius: 12px;

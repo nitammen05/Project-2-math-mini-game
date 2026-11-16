@@ -178,5 +178,64 @@ class TestAnimationStyle(unittest.TestCase):
         self.assertEqual(picker.count("class='sp-body"), len(HEROES))
 
 
+def lose(g):
+    while g.status == "playing":
+        g.answer("wrong")
+    return g
+
+
+def seconds(text):
+    return [float(x) for x in re.findall(r"(\d*\.?\d+)s", text)]
+
+
+class TestDefeatScreen(unittest.TestCase):
+    """R14: on the game-over screen the opponent and the health bars disappear."""
+
+    def test_R14_opponent_lunges_then_vanishes(self):
+        rules = rule(".perish .fighter.foe")
+        self.assertRegex(rules, r"animation: lunge-left [^,]*, vanish [^;]*forwards")
+        self.assertRegex(STYLE, r"@keyframes vanish \{[^}]*opacity: 0")
+
+    def test_R14_opponent_vanishes_only_after_the_hero_has_fallen(self):
+        vanish = re.search(r"vanish ([\d.]+)s ([\d.]+)s", rule(".perish .fighter.foe"))
+        fall = re.search(r"fall-left ([\d.]+)s ([\d.]+)s", rule(".hero.hurt.ko"))
+        self.assertGreaterEqual(float(vanish.group(2)),
+                                float(fall.group(1)) + float(fall.group(2)))
+
+    def test_R14_health_bars_fade_away_on_defeat(self):
+        self.assertRegex(rule("body:has(.perish) .hud"), r"animation: fade-away [^;]*forwards")
+
+    def test_R14_leftover_damage_number_fades_too(self):
+        self.assertIn("fade-away", rule(".perish .dmg"))
+
+    def test_R14_new_animations_are_short(self):
+        for selector in (".perish .fighter.foe", "body:has(.perish) .hud", ".perish .dmg"):
+            for n in seconds(rule(selector)):
+                self.assertLess(n, 1.5, selector)
+
+    def test_R14_reduced_motion_hides_them_at_once(self):
+        reduced = reduced_motion_css()
+        self.assertRegex(reduced, r"\.perish \.foe \{ opacity: 0")
+        self.assertRegex(reduced, r"body:has\(\.perish\) \.hud \{ animation: none; opacity: 0")
+
+    def test_R14_defeat_page_keeps_them_in_the_html(self):
+        # Hidden by CSS, not removed: Round 3's tests and screen readers still find them.
+        html = render_game(lose(Game(PROBLEMS)))
+        self.assertIn("<div class='world scene-graveyard perish'>", html)
+        self.assertIn("HP 0/10", between(html, "class='hud'", "class='world"))
+        self.assertIn("class='fighter foe attack'", html)
+
+    def test_R14_only_the_defeat_screen_hides_them(self):
+        # The perish class is what triggers R14; a win or a normal turn never has it.
+        g = Game(PROBLEMS)
+        g.answer("wrong")
+        self.assertNotIn("perish", between(render_game(g), "<body>", "</body>"))
+        while g.status == "playing":
+            g.answer(str(g.current_problem.answer))
+        self.assertNotIn("perish", between(render_game(g), "<body>", "</body>"))
+        for selector in re.findall(r"([^{}]*)\{[^}]*vanish ", STYLE):
+            self.assertIn(".perish", selector)
+
+
 if __name__ == "__main__":
     unittest.main()
