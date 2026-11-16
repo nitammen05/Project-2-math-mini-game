@@ -78,3 +78,36 @@ terminal with `python3 main.py`, and all earlier tests keep passing. Every singl
 animation still lasts under 1.5 seconds (R7). The walk-and-scroll in R9 is a chain of
 short animations, each started after a delay, so the whole change of scene takes
 about 2 seconds.
+
+## Round 5: Detailed sprites, idle animations, hero names, and a cleaner defeat
+
+New requirement IDs continue from Round 4 (R1–R10 are unchanged):
+
+- **R11** Every hero and opponent sprite is drawn in much more detail than in Round 2:
+  outlines, shading and highlights, and parts such as armour, clothing, faces, hair,
+  weapons and props (at least 25 shapes per sprite). Each still matches its name (R4),
+  faces the way it records (R6), and is drawn on the same 64 × 64 grid.
+- **R12** Sprites are animated in more detail:
+  - *Idle:* while nothing else is happening, every fighter (and every hero on the
+    picker) breathes, blinks, and gently moves a loose part such as a cape, plume,
+    beard, ears or wings. Glowing things (the wizard's orb, the dragon's fire) flicker.
+  - *Attack:* the attacker swings its weapon (or the dragon breathes a burst of fire)
+    while it lunges (R7).
+  - *Hurt:* the fighter that is hit squeezes its eyes shut while it shakes (R7).
+  - *Knocked out:* a knocked-out fighter stops its idle movement and its eyes stay shut.
+  Each loop of an idle animation lasts under 1.5 seconds, as R7 requires of every
+  animation; longer-looking cycles come from playing a loop forwards then backwards.
+  With reduced motion, sprites do not move at all (no idle movement either).
+- **R13** Each hero has a personal name, shown instead of its class word: Sir Aldric
+  (the knight), Zoltan (the wizard), Wren (the archer) and Kaito (the ninja). The name
+  is shown under the hero on the picker and on the player's health bar in battle
+  (instead of "You"). The picture itself is still described to screen readers by its
+  class ("Knight", "Wizard", ...), as in Round 2.
+- **R14** On the defeat (game-over) screen, after the hero has fallen, the opponent's
+  sprite vanishes and the health bars fade away, leaving the sinking hero in the Dirt
+  and Bones scene (R10). They stay in the page (so the final HP is still there for
+  screen readers) but are no longer visible. With reduced motion they are hidden at
+  once. Winning does not hide anything.
+
+Constraints carried over: Python only, standard library only, started from the
+terminal with `python3 main.py`, and all earlier tests keep passing.
