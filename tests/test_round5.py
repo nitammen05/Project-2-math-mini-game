@@ -5,7 +5,7 @@ import unittest
 
 from game import Game, OPPONENTS
 from sprites import HEROES, MIRROR, MONSTERS, render_hero, render_monster
-from web import render_game, render_title
+from web import STYLE, render_game, render_title
 from tests.test_web import PROBLEMS, between
 
 
@@ -115,6 +115,67 @@ class TestAnimatedParts(unittest.TestCase):
             for classes in re.findall(r"class='([^']*)'", sprite.svg):
                 for name in classes.split():
                     self.assertTrue(name.startswith("sp-"), f"{label}: {name}")
+
+
+def rule(selector):
+    """The declarations of the first CSS rule in STYLE with exactly this selector."""
+    m = re.search(re.escape(selector) + r" \{([^}]*)\}", STYLE)
+    if m is None:
+        raise AssertionError(f"no CSS rule for {selector}")
+    return m.group(1)
+
+
+def reduced_motion_css():
+    return STYLE[STYLE.index("prefers-reduced-motion"):]
+
+
+class TestAnimationStyle(unittest.TestCase):
+    """R12: the page's CSS moves the marked parts."""
+
+    def test_R12_style_defines_the_new_animations(self):
+        for name in ("breathe", "squish", "blink", "sway", "flicker", "weapon-ready",
+                     "swing", "swing-left", "fire-burst", "wince"):
+            self.assertIn(f"@keyframes {name} ", STYLE, name)
+
+    def test_R12_idle_animations_loop_forever(self):
+        for selector, name in ((".sprite .sp-body", "breathe"), (".sprite .sp-eye", "blink"),
+                               (".sprite .sp-sway", "sway"), (".sprite .sp-glow", "flicker"),
+                               (".sprite .sp-weapon", "weapon-ready")):
+            self.assertRegex(rule(selector), rf"animation: {name} [^;]*infinite", selector)
+
+    def test_R12_each_idle_loop_is_under_one_and_a_half_seconds(self):
+        for line in re.findall(r"animation: ([^;]*infinite[^;]*);", STYLE):
+            seconds = float(re.search(r"(\d*\.?\d+)s", line).group(1))
+            self.assertLess(seconds, 1.5, line)
+
+    def test_R12_attacker_swings_its_weapon_or_breathes_fire(self):
+        self.assertIn("animation: swing ", rule(".attack .sp-weapon"))
+        self.assertIn("swing-left", rule(".attack .sp-weapon.sp-left"))
+        self.assertIn("animation: fire-burst ", rule(".attack .sp-glow"))
+
+    def test_R12_hurt_fighter_winces(self):
+        self.assertIn("animation: wince ", rule(".hurt .sp-eye"))
+
+    def test_R12_knocked_out_fighter_stops_and_shuts_its_eyes(self):
+        self.assertIn("animation: none", rule(".ko .sprite *"))
+        self.assertIn("scaleY(", rule(".ko .sp-eye"))
+        # The knockout rules come last, so they win over the idle and hurt rules.
+        self.assertGreater(STYLE.index(".ko .sprite *"), STYLE.index(".hurt .sp-eye"))
+
+    def test_R12_weapons_and_fire_may_reach_outside_the_sprite_box(self):
+        self.assertIn("overflow: visible", rule(".sprite"))
+
+    def test_R12_reduced_motion_stops_all_sprite_movement(self):
+        self.assertRegex(reduced_motion_css(), r"\.sprite \*[^{]*\{ animation: none !important")
+
+    def test_R12_battle_page_fighters_carry_the_animated_parts(self):
+        world = between(render_game(Game(PROBLEMS)), "<div class='world", "class='info'")
+        self.assertEqual(world.count("class='sp-body"), 2)
+        self.assertIn("class='sp-eye'", world)
+
+    def test_R12_hero_picker_sprites_are_animated_too(self):
+        picker = between(render_title(), "class='picker'", "</form>")
+        self.assertEqual(picker.count("class='sp-body"), len(HEROES))
 
 
 if __name__ == "__main__":

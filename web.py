@@ -31,7 +31,7 @@ input[type=text] { font-size: 1.4em; width: 8em; padding: 6px; }
 button { font-size: 1.2em; padding: 8px 18px; border: 0; border-radius: 8px;
          background: #ffd166; color: #1d1b2f; cursor: pointer; }
 form { text-align: center; }
-.sprite { display: block; margin: 0 auto; }
+.sprite { display: block; margin: 0 auto; overflow: visible; }  /* swings may poke out */
 /* Round 3: fighting-game screen. Health bars on top (R5)... */
 .hud { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
 .hud .hp { flex: 1; margin: 0; padding: 8px 10px; }
@@ -110,9 +110,44 @@ form { text-align: center; }
 .advance .ko-banner { animation: pop 0.4s 0.8s both, fade-away 0.3s 1.2s forwards; }
 /* R10: the opponent's scene fades, leaving dirt and bones, as the hero sinks. */
 .perish > .backdrop { animation: fade-away 1s 1.4s forwards; }
+/* Round 5 (R12): parts of each sprite move on their own. sprites.py marks the parts
+   with sp-* classes. Idle loops play forwards then backwards ("alternate"), so each
+   loop stays under 1.5 s (R7) while a full cycle looks slower and calmer. */
+@keyframes breathe { to { transform: scale(1.03, 0.97); } }
+@keyframes squish { to { transform: scale(1.08, 0.9); } }
+@keyframes blink { 0%, 94% { transform: none; } 100% { transform: scaleY(0.1); } }
+@keyframes sway { from { transform: rotate(-5deg); } to { transform: rotate(5deg); } }
+@keyframes flicker { from { opacity: 0.7; transform: scale(0.9); } to { opacity: 1; transform: scale(1.1); } }
+@keyframes weapon-ready { to { transform: rotate(-5deg); } }
+@keyframes swing { 0%, 100% { transform: none; } 30% { transform: rotate(-35deg); }
+                   60% { transform: rotate(75deg); } }
+@keyframes swing-left { 0%, 100% { transform: none; } 30% { transform: rotate(35deg); }
+                        60% { transform: rotate(-75deg); } }
+@keyframes fire-burst { 0%, 100% { transform: none; } 45% { transform: scale(2.6); opacity: 1; } }
+@keyframes wince { 0%, 100% { transform: none; } 15%, 85% { transform: scaleY(0.12); } }
+.sprite .sp-body { transform-box: fill-box; transform-origin: 50% 100%;
+                   animation: breathe 1.2s ease-in-out infinite alternate; }
+.sprite .sp-body.sp-squish { animation-name: squish; }
+.sprite .sp-eye { transform-box: fill-box; transform-origin: center;
+                  animation: blink 1.4s linear infinite alternate; }
+.sprite .sp-sway { transform-box: fill-box; transform-origin: 50% 0;
+                   animation: sway 1.3s ease-in-out infinite alternate; }
+.sprite .sp-glow { transform-box: fill-box; transform-origin: center;
+                   animation: flicker 0.7s ease-in-out infinite alternate; }
+/* A weapon pivots on the hand: each sprite gives the point in its own style. */
+.sprite .sp-weapon { transform-box: view-box;
+                     animation: weapon-ready 1.2s ease-in-out infinite alternate; }
+/* Actions: the attacker swings (or breathes fire) as it lunges; the hit one winces. */
+.attack .sp-weapon { animation: swing 0.5s ease-out; }
+.attack .sp-weapon.sp-left { animation-name: swing-left; }
+.attack .sp-glow { animation: fire-burst 0.5s ease-out; }
+.hurt .sp-eye { animation: wince 0.7s 0.2s; }
+/* A knocked-out fighter lies still with its eyes shut. */
+.ko .sprite * { animation: none; }
+.ko .sp-eye { transform: scaleY(0.12); }
 @media (prefers-reduced-motion: reduce) {
   /* No movement, but the red flash still shows who was hit. */
-  .stage *, .dmg, .ko-banner { animation: none !important; }
+  .stage *, .dmg, .ko-banner, .sprite * { animation: none !important; }
   .stage .hurt { animation: flash 0.7s 0.2s 2 !important; }
   /* Round 4: the new scene simply appears, and a defeated hero is shown faded. */
   .backdrop { display: none; }
