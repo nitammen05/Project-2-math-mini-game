@@ -24,3 +24,9 @@ The program must create a fun game that both helps the user learn and enjoy lear
 - I want them to have much more detailed animations including idle animations
 - I want the player sprites to have specific names instead of "Ninja"
 - Also update the death screen so the opponent sprite dissapears along with the health bars
+
+**Round 6**
+- I now want to add sound to the game
+- There should different music playing for every opponent faced
+- Each sprite should play a short voice line when selected by the user
+- There should also be sounds that play for each attack and when damage is taken. 
