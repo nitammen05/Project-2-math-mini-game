@@ -76,7 +76,8 @@ class TestSoundFiles(unittest.TestCase):
             self.assertIsNone(make_sound(name), name)
 
     def test_R15_sounds_use_only_the_standard_library(self):
-        tree = ast.parse(open(sounds.__file__, encoding="utf-8").read())
+        with open(sounds.__file__, encoding="utf-8") as f:
+            tree = ast.parse(f.read())
         for node in ast.walk(tree):
             if isinstance(node, ast.Import):
                 names = [a.name for a in node.names]
@@ -180,6 +181,28 @@ class TestSoundServer(unittest.TestCase):
         for path in ["/sound/nope.wav", "/sound/hurt-hero", "/sound/../web.py",
                      "/sound/hurt-hero.wav/x"]:
             self.assertEqual(self.get(path)[0].status, 404, path)
+
+    def test_R16_server_can_send_part_of_a_sound_so_music_can_skip_ahead(self):
+        # Browsers ask for a "range" of bytes to jump into the middle of music or loop it.
+        self.start()
+        self.conn.request("GET", "/sound/music-war-drums.wav", headers={"Range": "bytes=100-199"})
+        resp = self.conn.getresponse()
+        data = resp.read()
+        whole = make_sound("music-war-drums")
+        self.assertEqual(resp.status, 206)
+        self.assertEqual(resp.getheader("Content-Range"), f"bytes 100-199/{len(whole)}")
+        self.assertEqual(data, whole[100:200])
+
+    def test_R16_open_ended_range_runs_to_the_end_and_bad_range_is_refused(self):
+        self.start()
+        whole = make_sound("crit")
+        self.conn.request("GET", "/sound/crit.wav", headers={"Range": "bytes=40-"})
+        resp = self.conn.getresponse()
+        self.assertEqual((resp.status, resp.read()), (206, whole[40:]))
+        self.conn.request("GET", "/sound/crit.wav", headers={"Range": f"bytes={len(whole)}-"})
+        resp = self.conn.getresponse()
+        resp.read()
+        self.assertEqual(resp.status, 416)
 
     def test_R16_music_picks_up_where_it_was_across_pages(self):
         now = [100.0]

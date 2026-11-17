@@ -2,6 +2,7 @@
 
 Pages:
     GET  /         show the title screen or the current battle
+    GET  /sound/<name>.wav   a sound made by sounds.py (R15)
     POST /start    begin a new game (form field `hero` picks the player's sprite)
     POST /answer   submit an answer to the current problem
 """
@@ -10,10 +11,13 @@ from html import escape
 from http.cookies import SimpleCookie
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs
+import re
 import secrets
+import time
 
 from game import Game, PLAYER_MAX_HP
 from scenes import GRAVEYARD, scene_css, scene_key
+from sounds import ATTACK_SOUNDS, MUSIC, make_sound, music_key, music_length
 from sprites import DEFAULT_HERO, HEROES, hero_name, render_hero, render_monster
 
 STYLE = """
@@ -169,6 +173,9 @@ body:has(.perish) .hud { animation: fade-away 0.8s 1.4s forwards; }
 .picker label:has(input:checked) { border-color: #ffd166; }
 .picker input { position: absolute; opacity: 0; }
 .picker input:focus-visible + .sprite { outline: 2px dashed #ffd166; }
+/* Round 6: the small music player under the battle (R15). */
+.sound { text-align: center; font-size: .85rem; opacity: .8; margin: .4rem 0; }
+.sound audio { height: 32px; vertical-align: middle; max-width: 100%; }
 """ + scene_css()   # one background rule per scene (R8)
 
 
@@ -263,7 +270,39 @@ def scene_effects(game):
     return f"scene-{scene}{how}", backdrop
 
 
-def render_game(game):
+def sound_html(game, music_at=0.0):
+    """The <audio> tags for a battle page (R15-R18). They play by themselves.
+
+    `music_at` is how many seconds the current opponent's music has been playing,
+    so the new page picks it up about where the last page left off (R16).
+    """
+    tags = []
+    if game.status == "playing":
+        key = music_key(game.opponent)
+        start = music_at % music_length(key)
+        jump = f"#t={start:.2f}" if round(start, 2) else ""
+        title = escape(MUSIC[key].title)
+        tags.append(f"<p>♪ {title} <audio src='/sound/music-{key}.wav{jump}' autoplay loop "
+                    f"controls preload='auto' title='Music: {title}'></audio></p>")
+    else:
+        tags.append(f"<audio src='/sound/jingle-{'victory' if game.status == 'won' else 'defeat'}.wav'"
+                    " autoplay></audio>")
+    turn = game.last_turn
+    if turn is None:
+        effects = [f"voice-{game.hero}"]       # the chosen hero speaks as the game starts (R17)
+    else:
+        if turn.attacker == "hero":
+            attacker, target = game.hero, "foe"
+        else:
+            attacker = turn.foe.sprite if turn.foe.sprite in ATTACK_SOUNDS else "foe"
+            target = "hero"
+        effects = [f"attack-{attacker}", f"hurt-{target}"]
+        effects += ["crit"] * turn.crit + ["knockout"] * turn.knockout
+    tags += [f"<audio src='/sound/{name}.wav' autoplay></audio>" for name in effects]
+    return "<div class='sound'>" + "".join(tags) + "</div>"
+
+
+def render_game(game, music_at=0.0):
     opp = game.opponent
     hero_fx, foe_fx, overlays = turn_effects(game)
     world, backdrop = scene_effects(game)
@@ -297,12 +336,21 @@ def render_game(game):
     else:
         parts.append(f"<div class='card'><h2>Game over. Final score: {game.score}</h2></div>"
                      + start_form("Try again", game.hero))
+    parts.append(sound_html(game, music_at))   # after everything else, so the layout is kept
     return page("".join(parts), heading=False)
 
 
-def make_handler(problems_by_category):
-    """Build a request-handler class that shares one set of problems and games."""
+SOUND_PATH = re.compile(r"/sound/([\w-]+)\.wav")
+RANGE = re.compile(r"bytes=(\d*)-(\d*)")
+
+
+def make_handler(problems_by_category, clock=time.monotonic):
+    """Build a request-handler class that shares one set of problems and games.
+
+    `clock` tells the time in seconds; tests pass a fake one.
+    """
     games = {}  # session id -> Game
+    music_clock = {}  # session id -> (stage, when that opponent's music started) (R16)
 
     class Handler(BaseHTTPRequestHandler):
         def _session_id(self):
@@ -325,12 +373,58 @@ def make_handler(problems_by_category):
                 self.send_header("Set-Cookie", f"session={session_id}; Path=/; HttpOnly")
             self.end_headers()
 
+        def _music_at(self, session_id, game):
+            """Seconds the current opponent's music has played; restarts with a new one."""
+            now = clock()
+            stage, started = music_clock.get(session_id, (None, now))
+            if stage != game.stage:
+                started = now
+                music_clock[session_id] = (game.stage, now)
+            return now - started
+
+        def _send_sound(self, data):
+            """Send a WAV file, or just the part a browser asks for in a Range header.
+
+            Browsers need this to jump into the middle of the music or loop it (R16).
+            """
+            status, start, end = 200, 0, len(data) - 1
+            match = RANGE.fullmatch(self.headers.get("Range", "").strip())
+            if match and (match.group(1) or match.group(2)):
+                if match.group(1):
+                    start = int(match.group(1))
+                    end = min(int(match.group(2) or end), end)
+                else:  # "bytes=-500" means the last 500 bytes
+                    start = max(0, len(data) - int(match.group(2)))
+                if start > end:
+                    self.send_response(416)
+                    self.send_header("Content-Range", f"bytes */{len(data)}")
+                    self.end_headers()
+                    return
+                status = 206
+            self.send_response(status)
+            self.send_header("Content-Type", "audio/wav")
+            self.send_header("Accept-Ranges", "bytes")
+            self.send_header("Cache-Control", "max-age=3600")
+            if status == 206:
+                self.send_header("Content-Range", f"bytes {start}-{end}/{len(data)}")
+            self.send_header("Content-Length", str(end - start + 1))
+            self.end_headers()
+            self.wfile.write(data[start:end + 1])
+
         def do_GET(self):
+            sound = SOUND_PATH.fullmatch(self.path)
+            if sound and make_sound(sound.group(1)) is not None:
+                self._send_sound(make_sound(sound.group(1)))
+                return
             if self.path != "/":
                 self.send_error(404)
                 return
-            game = games.get(self._session_id())
-            self._send_html(render_game(game) if game else render_title())
+            session_id = self._session_id()
+            game = games.get(session_id)
+            if game:
+                self._send_html(render_game(game, self._music_at(session_id, game)))
+            else:
+                self._send_html(render_title())
 
         def do_POST(self):
             length = int(self.headers.get("Content-Length", 0))
@@ -338,6 +432,7 @@ def make_handler(problems_by_category):
             if self.path == "/start":
                 session_id = self._session_id() or secrets.token_hex(16)
                 games[session_id] = Game(problems_by_category, hero=form.get("hero", [None])[0])
+                music_clock.pop(session_id, None)   # a new game starts its music again
                 self._redirect_home(session_id)
             elif self.path == "/answer":
                 game = games.get(self._session_id())
@@ -354,5 +449,6 @@ def make_handler(problems_by_category):
     return Handler
 
 
-def make_server(problems_by_category, host="127.0.0.1", port=8000):
-    return ThreadingHTTPServer((host, port), make_handler(problems_by_category))
+def make_server(problems_by_category, host="127.0.0.1", port=8000, clock=None):
+    handler = make_handler(problems_by_category, clock or time.monotonic)
+    return ThreadingHTTPServer((host, port), handler)
