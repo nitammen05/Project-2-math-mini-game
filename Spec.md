@@ -111,3 +111,45 @@ New requirement IDs continue from Round 4 (R1–R10 are unchanged):
 
 Constraints carried over: Python only, standard library only, started from the
 terminal with `python3 main.py`, and all earlier tests keep passing.
+
+## Round 6: Sound
+
+New requirement IDs continue from Round 5 (R1–R14 are unchanged). The student chose
+(when asked) that heroes "speak" in made-up character babble rather than real words,
+and that the game stays Python + HTML only, with no JavaScript.
+
+- **R15** The game has sound. Every sound (music, voices and effects) is made by the
+  Python program itself, with the standard library only, as a WAV file. No sound
+  files are downloaded or stored in the project. The server sends them at
+  `/sound/<name>.wav`; any other sound name is "404 Not Found". Pages play them with
+  plain HTML `<audio>` tags, and no page contains JavaScript. The battle music has a
+  small visible player, so the player can pause it, change the volume, or start it if
+  the browser blocked it from starting on its own.
+- **R16** Each opponent has its own music, which loops for as long as the player
+  fights that opponent and fits its name:
+  - Slime of Sums: **Swamp Bounce**, a slow, bouncy, happy tune.
+  - Goblin of Minus: **Sneaky Cave**, a quick, tiptoeing minor tune.
+  - Orc of Times: **War Drums**, a marching tune with heavy drums.
+  - Troll of Division: **Bridge Stomp**, a slow, low, heavy tune.
+  - Dragon of Powers: **Volcano Fury**, a fast, fiery tune.
+  Every opponent's music is different. An opponent with no music gets a plain default
+  tune instead of breaking the page. Because every answer loads a new page, the music
+  picks up about where it was on the previous page, and starts from the beginning
+  when a new opponent appears. When the game ends, the music stops and a short tune
+  plays once instead: a fanfare for a victory, a sad tune for a defeat.
+- **R17** Each hero has a voice line: a short burst of babble (under 1.5 seconds)
+  with its own pitch, sound and rhythm, so each hero sounds different. Because the
+  game has no JavaScript, it plays when the player starts a game with the hero they
+  selected (the first battle page, before any answer), not on the click itself. It
+  doesn't play again after an answer.
+- **R18** Every attack and every hit has a sound. After each answer, the attacker's
+  attack sound plays as it lunges (R7). Each fighter has its own: a sword swish
+  (Sir Aldric), a magic zap (Zoltan), a bow twang (Wren), a shuriken whoosh (Kaito), a
+  splat (slime), a dagger stab (goblin), a club thump (orc), a heavy smash (troll) and
+  a roar of fire (dragon). As the hit lands, a damage sound plays for the fighter that
+  was hit: one for the hero and one for an opponent. A critical hit and a knockout
+  each add a sound of their own. Each of these sounds lasts under 1.5 seconds. No
+  attack or damage sound plays when a battle starts, before any answer.
+
+Constraints carried over: Python only, standard library only, started from the
+terminal with `python3 main.py`, and all earlier tests keep passing.
