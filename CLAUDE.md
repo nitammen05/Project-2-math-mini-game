@@ -28,3 +28,8 @@ Standing rule added after Round 4:
 Standing rule added after Round 5:
 
 16. A headless screenshot with `--virtual-time-budget` can show the page before any animation has run, so don't trust it for timing. Check end states by freezing the elements (`animation-play-state: paused` with a negative `animation-delay`), and ask the student to watch the order and speed of animations in a real browser.
+
+Standing rules added after Round 6:
+
+17. Pages contain no JavaScript (the student's choice in Round 6, which fits rule 1). Sounds are played with HTML `<audio>` tags and animations with CSS. A test checks that no page has a `<script>`, an `on...=` handler or `javascript:`.
+18. Tests can't hear. Check a sound's WAV data instead (its length, where it is silent, how loud it gets), and ask the student to listen to it in a real browser.
